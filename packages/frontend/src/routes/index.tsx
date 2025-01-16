@@ -15,6 +15,7 @@ export const router = createBrowserRouter([
         <ThemeProvider />
       </LoginProvider>
     ),
+    errorElement: <Error />,  // 최상위 에러 처리
     children: [
       {
         element: <Layout />,
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
           {
             path: 'stocks/:stockId',
             element: <StockDetail />,
+            errorElement: <Error />  // StockDetail의 에러 처리
           },
           {
             path: '/my-page',

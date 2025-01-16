@@ -1,4 +1,4 @@
-import { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import { z } from 'zod';
 import { instance } from '../config';
 import { formatZodError } from './formatZodError';
@@ -10,26 +10,30 @@ interface GetParams {
 }
 
 export const get = async <T>({
-  params,
-  schema,
-  url,
-}: GetParams): Promise<T> => {
-  const { data } = await instance.get(url, { params });
-  const result = schema.safeParse(data);
+                               params,
+                               schema,
+                               url,
+                             }: GetParams): Promise<T> => {
+  try {
+    const { data } = await instance.get(url, { params });
+    const result = schema.safeParse(data);
 
-  // if (!result.success) {
-  //   throw new Error(formatZodError(result.error));
-  // }
+    if (!result.success) {
+      console.log(`${url} : Validation Error`, {
+        errors: result.error.errors,
+        receivedData: data,
+        params
+      });
+      throw new Error(formatZodError(result.error));
+    }
 
-  if (!result.success) {
-    // Zod 검증 실패 로깅
-    console.log(`${url} : Validation Error`, {
-      errors: result.error.errors,
-      receivedData: data,
-      params
-    });
-    throw new Error(formatZodError(result.error));
+    return data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {  // instance 대신 axios 사용
+      if (error.response?.status === 404) {
+        throw new Error('NOT_FOUND');
+      }
+    }
+    throw error;
   }
-
-  return data;
 };
