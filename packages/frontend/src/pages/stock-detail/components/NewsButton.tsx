@@ -12,7 +12,7 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
   const handleClick = async () => {
     try {
       setIsOpen(true);
-      const response = await fetch(`http://localhost:3000/api/stock/news/${stockId}`);
+      const response = await fetch(`http://juchumjuchum.site/api/stock/news/${stockId}`);
       const data = await response.json();
       setNews(data);
     } catch (error) {
