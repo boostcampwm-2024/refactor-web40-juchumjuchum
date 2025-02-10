@@ -5,7 +5,6 @@ import { NewsSummaryService } from '@/news/newsSummary.service';
 import { StockNewsRepository } from '@/news/stockNews.repository';
 import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 import { Cron } from '@nestjs/schedule';
-import { CreateStockNewsDto } from '@/news/dto/stockNews.dto';
 
 @Injectable()
 export class StockNewsOrchestrationService {

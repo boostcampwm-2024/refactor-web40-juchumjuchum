@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { Logger } from 'winston';
 import { CreateStockNewsDto } from './dto/stockNews.dto';
-import { SAMPLE_NEWS_SCRAP } from './sample';
 import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 
 @Injectable()
@@ -15,7 +14,6 @@ export class NewsSummaryService {
 
   constructor(@Inject('winston') private readonly logger: Logger) {}
 
-  // TODO: 뉴스 데이터를 넣어주는 파라미터 추가
   async summarizeNews(stockNewsData: CrawlingDataDto) {
     try {
       const clovaResponse = await axios.post(
