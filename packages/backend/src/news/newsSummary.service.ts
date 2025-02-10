@@ -19,16 +19,7 @@ export class NewsSummaryService {
       const clovaResponse = await axios.post(
         this.CLOVA_API_URL,
         {
-          messages: [
-            {
-              role: 'system',
-              content: this.getSystemPrompt(),
-            },
-            {
-              role: 'user',
-              content: JSON.stringify(stockNewsData),
-            },
-          ],
+          ...this.getRequestMessages(stockNewsData),
           ...this.getParameters(),
         },
         {
@@ -66,18 +57,7 @@ export class NewsSummaryService {
     try {
       const clovaTokenResponse = await axios.post(
         this.CLOVA_TOKEN_URL,
-        {
-          messages: [
-            {
-              role: 'system',
-              content: this.getSystemPrompt(),
-            },
-            {
-              role: 'user',
-              content: JSON.stringify(stockNewsData),
-            },
-          ],
-        },
+        this.getRequestMessages(stockNewsData),
         {
           headers: this.getHeaders(),
         },
@@ -110,6 +90,21 @@ export class NewsSummaryService {
       return links;
     }
     return '';
+  }
+
+  private getRequestMessages(stockNewsData: CrawlingDataDto) {
+    return {
+      messages: [
+        {
+          role: 'system',
+          content: this.getSystemPrompt(),
+        },
+        {
+          role: 'user',
+          content: JSON.stringify(stockNewsData),
+        },
+      ],
+    };
   }
 
   private getSystemPrompt() {
