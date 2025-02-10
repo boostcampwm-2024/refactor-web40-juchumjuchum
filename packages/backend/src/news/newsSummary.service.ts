@@ -99,7 +99,7 @@ export class NewsSummaryService {
   private verfiyClovaResponse(response: any) {
     try {
       const content = response.data.result.message.content;
-      this.logger.info(`Summarized news: ${content}`);
+      // this.logger.info(`Summarized news: ${content}`);
 
       const parsedContent = JSON.parse(content);
       return parsedContent;
