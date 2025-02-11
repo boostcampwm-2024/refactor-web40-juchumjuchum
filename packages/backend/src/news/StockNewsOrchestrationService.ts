@@ -31,6 +31,7 @@ export class StockNewsOrchestrationService {
   private readonly MAX_RETRIES = 3;
   private readonly INITIAL_RETRY_DELAY = 60000;  // 60초
   private readonly PROCESS_DELAY = 3000;  // 주식 처리 사이 대기 시간 (3초)
+  private readonly INPUT_TOKEN_LIMIT = 7600;  // 개별 요청당 토큰 수 제한
   
   private getRetryDelay(retryCount: number): number {
     return this.INITIAL_RETRY_DELAY;
@@ -60,13 +61,12 @@ export class StockNewsOrchestrationService {
       let tokenLength =
         await this.newsSummaryService.calculateToken(stockNewsData);
 
-      while (tokenLength > 7600) {
+      while (tokenLength > this.INPUT_TOKEN_LIMIT) {
         this.logger.warn('Token length is too long. Reducing news data');
         stockNewsData.news.pop();
         tokenLength =
           await this.newsSummaryService.calculateToken(stockNewsData);
       }
-
       this.logger.info(`final token length: ${tokenLength}`);
 
       const rawSummarizedData = await this.newsSummaryService.summarizeNews(stockNewsData);
