@@ -189,9 +189,11 @@ export class NewsSummaryService {
 
       const parsedContent = JSON.parse(content);
       const fixedContent = this.fixFieldNames(parsedContent);
-    
+
       if (!('stock_id' in fixedContent) || !('stock_name' in fixedContent)) {
-        this.logger.error('Response is missing required fields: stock_id, stock_name');
+        this.logger.error(
+          'Response is missing required fields: stock_id, stock_name',
+        );
         return null;
       }
 
@@ -204,8 +206,17 @@ export class NewsSummaryService {
 
   private fixFieldNames(content: any) {
     const fieldMappings: Record<string, string> = {
-      'stockId': 'stock_id',
-      'stockName': 'stock_name',
+      stockId: 'stock_id',
+      StockId: 'stock_id',
+      StockName: 'stock_name',
+      stockName: 'stock_name',
+      Link: 'link',
+      Title: 'title',
+      Summary: 'summary',
+      PositiveContent: 'positive_content',
+      positiveContent: 'positive_content',
+      NegativeContent: 'negative_content',
+      negativeContent: 'negative_content',
     };
 
     return Object.keys(content).reduce((acc: any, key: string) => {
