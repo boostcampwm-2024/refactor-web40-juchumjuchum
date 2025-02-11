@@ -29,6 +29,16 @@ const getTopViews = ({ limit }: Partial<GetStockListRequest>) =>
     },
   });
 
+const getTopMarketCap = ({ limit }: Partial<GetStockListRequest>) =>
+  get<Partial<GetStockTopViewsResponse>[]>({
+    schema: z.array(GetStockListResponseSchema.partial()),
+    url: `/api/stock/top`,
+    params: {
+      sortBy: 'marketCap',
+      limit: 10,
+    },
+  });
+
 export const useStockQueries = ({ viewsLimit }: StockQueriesProps) => {
   return useSuspenseQueries({
     queries: [
@@ -38,7 +48,7 @@ export const useStockQueries = ({ viewsLimit }: StockQueriesProps) => {
       },
       {
         queryKey: ['topViews'],
-        queryFn: () => getTopViews({ limit: viewsLimit }),
+        queryFn: () => getTopMarketCap({ limit: viewsLimit }),
       },
     ],
   });
