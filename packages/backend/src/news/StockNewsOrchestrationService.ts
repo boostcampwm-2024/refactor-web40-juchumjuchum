@@ -55,9 +55,7 @@ export class StockNewsOrchestrationService {
         stockDataList.response,
       );
 
-      const rawSummarizedData = await this.newsSummaryService.summarizeNews({
-        ...stockNewsData,
-      });
+      const rawSummarizedData = await this.newsSummaryService.summarizeNews(stockNewsData);
 
       if (!rawSummarizedData) {
         throw new Error(`Failed to summarize news for ${stock.name}`);
