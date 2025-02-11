@@ -45,6 +45,8 @@ export class StockService {
         return this.getTopStocksByGainers(limit);
       case 'losers':
         return this.getTopStocksByLosers(limit);
+      case 'marketCap':
+        return this.getTopStocksByMarketCap(limit);
       default:
         throw new BadRequestException(`Unknown sort strategy: ${sortBy}`);
     }
@@ -63,6 +65,11 @@ export class StockService {
   async getTopStocksByLosers(limit: number) {
     const rawData = await this.stockRepository.findByTopLosers(limit);
     return new StockRankResponses(rawData);
+  }
+
+  async getTopStocksByMarketCap(limit: number) {
+    const rawData = await this.stockRepository.findByTopMarketCap(limit);
+    return plainToInstance(StocksResponse, rawData);
   }
 
   // TODO: 프론트엔드에서 'fluctuation' api 경로에 대한 요청을 삭제하면서 이 메서드는 더 이상 사용되지 않음
@@ -125,4 +132,6 @@ export class StockService {
       throw new BadRequestException('user stock already exists');
     }
   }
+
+
 }
