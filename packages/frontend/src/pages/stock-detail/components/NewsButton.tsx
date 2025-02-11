@@ -5,7 +5,7 @@ interface NewsButtonProps {
   stockName: string;
 }
 
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://juchumjuchum.site';
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
