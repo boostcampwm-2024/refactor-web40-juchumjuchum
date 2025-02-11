@@ -8,13 +8,16 @@ import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 
 @Injectable()
 export class NewsCrawlingService {
+  private readonly MAX_NEWS_COUNT = 5;
+
   constructor(@Inject('winston') private readonly logger: Logger) {
   }
 
   // naver news API 이용해 뉴스 정보 얻어오기
   async getNewsLinks(stockName: string) {
     const encodedStockName = encodeURI(stockName);
-    const newsUrl = `${process.env.NAVER_NEWS_URL}?query=${encodedStockName}&display=5&sort=sim`;
+    // 10개 요청
+    const newsUrl = `${process.env.NAVER_NEWS_URL}?query=${encodedStockName}&display=10&sort=sim`;
     try {
       const res: NewsInfoDto = await axios(newsUrl, {
         method: 'GET',
@@ -23,9 +26,14 @@ export class NewsCrawlingService {
           'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET,
         },
       }).then((r) => r.data);
+
+      // 네이버 뉴스만 필터링 후 상위 5개만 선택
+      const naverNews = await this.extractNaverNews(res);
+      const limitedNews = naverNews.slice(0, this.MAX_NEWS_COUNT);
+
       return {
         stock: stockName,
-        response: await this.extractNaverNews(res),
+        response: limitedNews,
       };
     } catch (err) {
       this.logger.error(err);
