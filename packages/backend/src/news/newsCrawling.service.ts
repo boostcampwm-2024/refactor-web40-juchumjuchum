@@ -61,10 +61,16 @@ export class NewsCrawlingService {
           const category = $(
             'li.Nlist_item._LNB_ITEM.is_active .Nitem_link_menu',
           ).text();
+          if (
+            category !== this.category.ECONOMICS &&
+            category !== this.category.IT &&
+            category !== this.category.WORLD
+          ) {
+            return null;
+          }
           const date = $('span._ARTICLE_DATE_TIME').attr('data-date-time');
           const title = $('#title_area').text();
           const content = $('#dic_area').text();
-
 
           return {
             category: category,
@@ -78,13 +84,7 @@ export class NewsCrawlingService {
     );
     return {
       stockName: stock,
-      news: crawledNews.filter((n) => {
-        return (
-          n.category === this.category.ECONOMICS ||
-          n.category === this.category.IT ||
-          n.category === this.category.WORLD
-        );
-      }),
+      news: crawledNews.filter((n) => n !== null),
     } as CrawlingDataDto;
   }
 }
