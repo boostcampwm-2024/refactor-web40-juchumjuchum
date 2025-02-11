@@ -11,6 +11,12 @@ export class NewsCrawlingService {
   constructor(@Inject('winston') private readonly logger: Logger) {
   }
 
+  private readonly category = {
+    POLITICS: '정치',
+    WORLD: '세계',
+    IT: 'IT/과학',
+  };
+
   // naver news API 이용해 뉴스 정보 얻어오기
   async getNewsLinks(stockName: string) {
     const encodedStockName = encodeURI(stockName);
