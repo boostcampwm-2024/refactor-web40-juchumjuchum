@@ -55,8 +55,19 @@ export class StockNewsOrchestrationService {
         stockDataList.stock,
         stockDataList.response,
       );
-      // this.logger.info('stockNewsData:');
-      // console.log(stockNewsData);
+      
+      // 토큰 수 계산
+      let tokenLength =
+        await this.newsSummaryService.calculateToken(stockNewsData);
+
+      while (tokenLength > 7600) {
+        this.logger.warn('Token length is too long. Reducing news data');
+        stockNewsData.news.pop();
+        tokenLength =
+          await this.newsSummaryService.calculateToken(stockNewsData);
+      }
+
+      this.logger.info(`final token length: ${tokenLength}`);
 
       const rawSummarizedData = await this.newsSummaryService.summarizeNews(stockNewsData);
       this.logger.info('rawSummarizedData:');

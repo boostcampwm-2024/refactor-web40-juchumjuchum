@@ -2,33 +2,24 @@ import { Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
 import { Logger } from 'winston';
 import { CreateStockNewsDto } from './dto/stockNews.dto';
-import { SAMPLE_NEWS_SCRAP } from './sample';
 import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 
 @Injectable()
 export class NewsSummaryService {
   private readonly CLOVA_API_URL =
     'https://clovastudio.stream.ntruss.com/testapp/v1/chat-completions/HCX-003';
+  private readonly CLOVA_TOKEN_URL =
+    'https://clovastudio.stream.ntruss.com/v1/api-tools/chat-tokenize/HCX-003';
   private readonly CLOVA_API_KEY = process.env.CLOVA_API_KEY;
 
   constructor(@Inject('winston') private readonly logger: Logger) {}
 
-  // TODO: 뉴스 데이터를 넣어주는 파라미터 추가
   async summarizeNews(stockNewsData: CrawlingDataDto) {
     try {
       const clovaResponse = await axios.post(
         this.CLOVA_API_URL,
         {
-          messages: [
-            {
-              role: 'system',
-              content: this.getSystemPrompt(),
-            },
-            {
-              role: 'user',
-              content: JSON.stringify(stockNewsData),
-            },
-          ],
+          ...this.getRequestMessages(stockNewsData),
           ...this.getParameters(),
         },
         {
@@ -42,9 +33,9 @@ export class NewsSummaryService {
       }
 
       const summarizedNews = new CreateStockNewsDto();
-      summarizedNews.stock_id = content.stockId;
-      summarizedNews.stock_name = content.stockName;
-      summarizedNews.link = this.formatLinks(content?.link);
+      summarizedNews.stock_id = content.stock_id;
+      summarizedNews.stock_name = content.stock_name;
+      summarizedNews.link = content.link;
       summarizedNews.title = content.title;
       summarizedNews.summary = content.summary;
       summarizedNews.positive_content = content.positive_content;
@@ -62,14 +53,48 @@ export class NewsSummaryService {
     }
   }
 
-  private formatLinks(links: unknown): string {
-    if (Array.isArray(links)) {
-      return links.join(",");
+  async calculateToken(stockNewsData: CrawlingDataDto) {
+    try {
+      const clovaTokenResponse = await axios.post(
+        this.CLOVA_TOKEN_URL,
+        this.getRequestMessages(stockNewsData),
+        {
+          headers: this.getHeaders(),
+        },
+      );
+
+      const messages = clovaTokenResponse.data.result.messages;
+      const totalToken = messages.reduce((acc: number, message: any) => {
+        return acc + message.count;
+      }, 0);
+
+      this.logger.info(`token length: ${totalToken}`);
+
+      return totalToken;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        this.logger.error(
+          `Failed to calculate token: status=${error.response?.data?.status?.code}, data=${error.response?.data?.status?.message}`,
+        );
+      } else {
+        this.logger.error('Unknown Error', error);
+      }
     }
-    if (typeof links === 'string') {
-      return links;
-    }
-    return "";
+  }
+
+  private getRequestMessages(stockNewsData: CrawlingDataDto) {
+    return {
+      messages: [
+        {
+          role: 'system',
+          content: this.getSystemPrompt(),
+        },
+        {
+          role: 'user',
+          content: JSON.stringify(stockNewsData),
+        },
+      ],
+    };
   }
 
   private getSystemPrompt() {
@@ -163,10 +188,30 @@ export class NewsSummaryService {
       this.logger.info(`Summarized news: ${content}`);
 
       const parsedContent = JSON.parse(content);
-      return parsedContent;
+      const fixedContent = this.fixFieldNames(parsedContent);
+    
+      if (!('stock_id' in fixedContent) || !('stock_name' in fixedContent)) {
+        this.logger.error('Response is missing required fields: stock_id, stock_name');
+        return null;
+      }
+
+      return fixedContent;
     } catch (error) {
       this.logger.error('Failed to parse clova response', error);
       return null;
     }
+  }
+
+  private fixFieldNames(content: any) {
+    const fieldMappings: Record<string, string> = {
+      'stockId': 'stock_id',
+      'stockName': 'stock_name',
+    };
+
+    return Object.keys(content).reduce((acc: any, key: string) => {
+      const fixedKey = fieldMappings[key] || key;
+      acc[fixedKey] = content[key];
+      return acc;
+    }, {});
   }
 }
