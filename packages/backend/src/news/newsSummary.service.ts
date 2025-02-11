@@ -190,9 +190,23 @@ export class NewsSummaryService {
       const parsedContent = JSON.parse(content);
       const fixedContent = this.fixFieldNames(parsedContent);
 
-      if (!('stock_id' in fixedContent) || !('stock_name' in fixedContent)) {
+      const requiredFields = [
+        'stock_id',
+        'stock_name',
+        'link',
+        'title',
+        'summary',
+        'positive_content',
+        'negative_content',
+      ];
+
+      const missingFields = requiredFields.filter(
+        (field) => !(field in fixedContent),
+      );
+
+      if (missingFields.length > 0) {
         this.logger.error(
-          'Response is missing required fields: stock_id, stock_name',
+          `Clova Response is missing required fields: ${missingFields.join(', ')}`,
         );
         return null;
       }
