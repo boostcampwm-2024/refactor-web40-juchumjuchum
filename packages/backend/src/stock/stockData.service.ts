@@ -56,20 +56,10 @@ export class StockDataService {
     const cachedData = this.stockDataCache.get(cacheKey);
 
     if (cachedData) {
-      const time = new Date();
-      const response = this.convertResultsToResponse(cachedData);
-      if (!lastStartTime && time.getHours() < 16 && time.getHours() >= 9) {
-        return await this.renewResponse(response, entity, stockId);
-      }
-      return response;
+      return cachedData;
     }
-    const results = await this.getChartData(entity, stockId, lastStartTime);
-    this.stockDataCache.set(cacheKey, results);
-    const response = this.convertResultsToResponse(results);
-    const time = new Date();
-    if (!lastStartTime && time.getHours() < 16 && time.getHours() >= 9) {
-      return await this.renewResponse(response, entity, stockId);
-    }
+    const response = await this.getChartData(entity, stockId, lastStartTime);
+    this.stockDataCache.set(cacheKey, response);
     return response;
   }
 
@@ -79,7 +69,7 @@ export class StockDataService {
     periodType: Period,
     lastStartTime?: string,
   ) {
-    return new Promise<StockData[]>((resolve) => {
+    return new Promise<StockDataResponse>((resolve) => {
       this.openapiPeriodData.insertCartDataRequest(
         this.getHandleResponseCallback(entity, stockId, resolve, lastStartTime),
         stockId,
@@ -119,7 +109,16 @@ export class StockDataService {
         lastStartTime,
       );
     }
-    return await this.getChartDataFromDB(entity, stockId, lastStartTime);
+    const response = await this.getChartDataFromDB(
+      entity,
+      stockId,
+      lastStartTime,
+    );
+    const time = new Date();
+    if (!lastStartTime && time.getHours() < 16 && time.getHours() >= 9) {
+      return await this.renewResponse(response, entity, stockId);
+    }
+    return response;
   }
 
   private async renewResponse(
@@ -147,13 +146,14 @@ export class StockDataService {
       this.dataSource.manager,
       lastStartTime,
     );
-    return await queryBuilder.getMany();
+    const results = await queryBuilder.getMany();
+    return this.convertResultsToResponse(results);
   }
 
   private getHandleResponseCallback(
     entity: new () => StockData,
     stockId: string,
-    resolve: (value: StockData[]) => void,
+    resolve: (value: StockDataResponse) => void,
     lastStartTime?: string,
   ) {
     return async () => {

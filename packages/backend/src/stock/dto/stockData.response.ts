@@ -21,32 +21,32 @@ export class PriceDto {
     description: '시가',
     example: '121.00',
   })
-  open: string;
+  open: number;
 
   @ApiProperty({
     description: '고가',
     example: '125.00',
   })
-  high: string;
+  high: number;
 
   @ApiProperty({
     description: '저가',
     example: '120.00',
   })
-  low: string;
+  low: number;
 
   @ApiProperty({
     description: '종가',
     example: '123.45',
   })
-  close: string;
+  close: number;
 
   constructor(stockData: StockData) {
     this.startTime = stockData.startTime;
-    this.open = String(stockData.open);
-    this.high = String(stockData.high);
-    this.low = String(stockData.low);
-    this.close = String(stockData.close);
+    this.open = stockData.open;
+    this.high = stockData.high;
+    this.low = stockData.low;
+    this.close = stockData.close;
   }
 }
 
@@ -104,42 +104,26 @@ export class StockDataResponse {
 
   renewLastData(stockLiveData: StockLiveData, entity: new () => StockData) {
     const lastIndex = this.priceDtoList.length - 1;
-    this.priceDtoList[lastIndex].close = String(stockLiveData.currentPrice);
-    this.renewHighLow(stockLiveData, lastIndex);
-    this.renewVolume(stockLiveData, lastIndex, entity);
-    this.renewStartTime(entity, lastIndex);
-  }
-
-  private renewStartTime(entity: new () => StockData, lastIndex: number) {
-    if (entity !== StockWeekly) {
-      this.priceDtoList[lastIndex].startTime = getToday();
-      this.volumeDtoList[lastIndex].startTime = getToday();
-      return;
-    }
-  }
-
-  private renewHighLow(stockLiveData: StockLiveData, lastIndex: number) {
+    this.priceDtoList[lastIndex].close = stockLiveData.currentPrice;
     this.priceDtoList[lastIndex].high =
       Number(stockLiveData.high) > Number(this.priceDtoList[lastIndex].high)
-        ? String(stockLiveData.high)
-        : String(this.priceDtoList[lastIndex].high);
+        ? stockLiveData.high
+        : this.priceDtoList[lastIndex].high;
     this.priceDtoList[lastIndex].low =
       Number(stockLiveData.low) < Number(this.priceDtoList[lastIndex].low)
-        ? String(stockLiveData.low)
-        : String(this.priceDtoList[lastIndex].low);
-  }
+        ? stockLiveData.low
+        : this.priceDtoList[lastIndex].low;
 
-  private renewVolume(
-    stockLiveData: StockLiveData,
-    lastIndex: number,
-    entity: new () => StockData,
-  ) {
+    this.priceDtoList[lastIndex].startTime =
+      entity !== StockWeekly
+        ? getToday()
+        : this.priceDtoList[lastIndex].startTime;
     this.volumeDtoList[lastIndex].volume =
       entity === StockDaily
         ? String(stockLiveData.volume)
         : String(
-            Number(this.volumeDtoList[lastIndex].volume) +
-              Number(stockLiveData.volume),
-          );
+          Number(this.volumeDtoList[lastIndex].volume) +
+          Number(stockLiveData.volume),
+        );
   }
 }
