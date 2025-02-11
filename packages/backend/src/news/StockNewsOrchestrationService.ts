@@ -90,7 +90,7 @@ export class StockNewsOrchestrationService {
     }
   }
 
-  @Cron('19 15 0 * * *')
+  @Cron('0 0 0 * * *')
   public async orchestrateStockProcessing(): Promise<void> {
     const results: { success: boolean; stock: { id: string; name: string } }[] = [];
     
