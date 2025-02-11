@@ -3,6 +3,8 @@ import axios from 'axios';
 import { Logger } from 'winston';
 import { CreateStockNewsDto } from './dto/stockNews.dto';
 import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
+import { plainToInstance } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
 
 @Injectable()
 export class NewsSummaryService {
@@ -27,19 +29,7 @@ export class NewsSummaryService {
         },
       );
 
-      const content = this.verfiyClovaResponse(clovaResponse);
-      if (!content) {
-        return null;
-      }
-
-      const summarizedNews = new CreateStockNewsDto();
-      summarizedNews.stock_id = content.stock_id;
-      summarizedNews.stock_name = content.stock_name;
-      summarizedNews.link = content.link;
-      summarizedNews.title = content.title;
-      summarizedNews.summary = content.summary;
-      summarizedNews.positive_content = content.positive_content;
-      summarizedNews.negative_content = content.negative_content;
+      const summarizedNews = this.validateClovaResponse(clovaResponse);
 
       return summarizedNews;
     } catch (error) {
@@ -182,7 +172,7 @@ export class NewsSummaryService {
     };
   }
 
-  private verfiyClovaResponse(response: any) {
+  private async validateClovaResponse(response: any) {
     try {
       const content = response.data.result.message.content;
       this.logger.info(`Summarized news: ${content}`);
@@ -190,30 +180,18 @@ export class NewsSummaryService {
       const parsedContent = JSON.parse(content);
       const fixedContent = this.fixFieldNames(parsedContent);
 
-      const requiredFields = [
-        'stock_id',
-        'stock_name',
-        'link',
-        'title',
-        'summary',
-        'positive_content',
-        'negative_content',
-      ];
+      const summarizedNews = plainToInstance(CreateStockNewsDto, fixedContent);
+      await validateOrReject(summarizedNews);
 
-      const missingFields = requiredFields.filter(
-        (field) => !(field in fixedContent),
-      );
-
-      if (missingFields.length > 0) {
-        this.logger.error(
-          `Clova Response is missing required fields: ${missingFields.join(', ')}`,
-        );
-        return null;
-      }
-
-      return fixedContent;
+      return summarizedNews;
     } catch (error) {
-      this.logger.error('Failed to parse clova response', error);
+      if (Array.isArray(error)) {
+        this.logger.error(
+          `Wrong field format from clova response: ${JSON.stringify(error, null, 2)}`,
+        );
+      } else {
+        this.logger.error('Failed to parse clova response', error);
+      }
       return null;
     }
   }
