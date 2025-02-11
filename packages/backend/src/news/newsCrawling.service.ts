@@ -14,7 +14,7 @@ export class NewsCrawlingService {
   // naver news API 이용해 뉴스 정보 얻어오기
   async getNewsLinks(stockName: string) {
     const encodedStockName = encodeURI(stockName);
-    const newsUrl = `${process.env.NAVER_NEWS_URL}?query=${encodedStockName}&display=10&sort=sim`;
+    const newsUrl = `${process.env.NAVER_NEWS_URL}?query=${encodedStockName}&display=5&sort=sim`;
     try {
       const res: NewsInfoDto = await axios(newsUrl, {
         method: 'GET',

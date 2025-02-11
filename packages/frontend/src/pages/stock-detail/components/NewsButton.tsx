@@ -5,7 +5,7 @@ interface NewsButtonProps {
   stockName: string;
 }
 
-const BACKEND_URL = import.meta.env.VITE_BASE_URL;
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +14,7 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
   const handleClick = async () => {
     try {
       setIsOpen(true);
-      const response = await fetch(`${BACKEND_URL}/api/stock/news/${stockId}`);
+      const response = await fetch(`${BASE_URL}/api/stock/news/${stockId}`);
       const data = await response.json();
       setNews(data);
     } catch (error) {
