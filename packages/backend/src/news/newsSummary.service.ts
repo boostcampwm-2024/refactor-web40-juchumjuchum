@@ -82,16 +82,6 @@ export class NewsSummaryService {
     }
   }
 
-  private formatLinks(links: unknown): string {
-    if (Array.isArray(links)) {
-      return links.join(',');
-    }
-    if (typeof links === 'string') {
-      return links;
-    }
-    return '';
-  }
-
   private getRequestMessages(stockNewsData: CrawlingDataDto) {
     return {
       messages: [
