@@ -29,11 +29,12 @@ export class StockNewsOrchestrationService {
   ] as const;
 
   private readonly MAX_RETRIES = 3;
-  private readonly INITIAL_RETRY_DELAY = 10000;  // 10초
+  private readonly INITIAL_RETRY_DELAY = 60000;  // 60초
   private readonly PROCESS_DELAY = 3000;  // 주식 처리 사이 대기 시간 (3초)
   
   private getRetryDelay(retryCount: number): number {
-    return this.INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+    return this.INITIAL_RETRY_DELAY;
+    // return this.INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
   }
 
   private async processStockNews(
@@ -54,8 +55,12 @@ export class StockNewsOrchestrationService {
         stockDataList.stock,
         stockDataList.response,
       );
+      // this.logger.info('stockNewsData:');
+      // console.log(stockNewsData);
 
       const rawSummarizedData = await this.newsSummaryService.summarizeNews(stockNewsData);
+      this.logger.info('rawSummarizedData:');
+      console.log(rawSummarizedData);
 
       if (!rawSummarizedData) {
         throw new Error(`Failed to summarize news for ${stock.name}`);
