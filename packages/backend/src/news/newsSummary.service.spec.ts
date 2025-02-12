@@ -4,6 +4,12 @@ import { NewsSummaryService } from './newsSummary.service';
 import axios from 'axios';
 import { CrawlingDataDto } from './dto/crawlingData.dto';
 import { CreateStockNewsDto } from './dto/stockNews.dto';
+import {
+  SummaryFieldException,
+  SummaryJsonException,
+  SummaryAPIException,
+  TokenAPIException,
+} from './error/newsSummary.error';
 
 jest.mock('axios');
 const mockAxios = axios as jest.Mocked<typeof axios>;
@@ -160,35 +166,52 @@ describe('NewsSummaryService', () => {
       ['positive_content', { ...contentExample, positive_content: undefined }],
       ['negative_content', { ...contentExample, negative_content: undefined }],
     ])(
-      '클로바 뉴스 요약의 필수 필드 중 %s 가 없는 경우 null을 반환한다',
+      '클로바 뉴스 요약의 필수 필드 중 %s 가 없는 경우 SummaryFieldException을 던진다',
       async (_, responseContent) => {
         // given
         const textContent = JSON.stringify(responseContent);
         const mockClovaResponse = createMockClovaResponse(textContent);
         mockAxios.post.mockResolvedValue(mockClovaResponse);
 
-        // when
-        const result = await newsSummaryService.summarizeNews(mockCrwalingData);
-
-        // then
-        expect(result).toBeNull();
-        expect(mockLogger.error).toHaveBeenCalled();
+        // when & then
+        await expect(
+          newsSummaryService.summarizeNews(mockCrwalingData),
+        ).rejects.toThrow(SummaryFieldException);
       },
     );
 
-    test('클로바 뉴스 요약 형태가 JSON이 아닌 경우 null을 반환한다', async () => {
+    test('클로바 뉴스 요약 형태가 JSON이 아닌 경우 SummaryJsonException을 던진다', async () => {
       // given
       const mockClovaResponse = createMockClovaResponse(
         '종목: 삼성전자, 제목: 실적 발표, 내용: 좋은 실적',
       );
       mockAxios.post.mockResolvedValue(mockClovaResponse);
 
-      // when
-      const result = await newsSummaryService.summarizeNews(mockCrwalingData);
+      // when & then
+      await expect(
+        newsSummaryService.summarizeNews(mockCrwalingData),
+      ).rejects.toThrow(SummaryJsonException);
+    });
 
-      // then
-      expect(result).toBeNull();
-      expect(mockLogger.error).toHaveBeenCalled();
+    test('뉴스 요약 API 요청이 실패하면 SummaryAPIException을 던진다', async () => {
+      // given
+      const mockClovaRejection = {
+        response: {
+          data: {
+            status: {
+              code: '42901',
+              message: 'Too many requests - rate exceeded',
+            },
+          },
+        },
+      };
+      mockAxios.post.mockRejectedValue(mockClovaRejection);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      // when & then
+      await expect(
+        newsSummaryService.summarizeNews(mockCrwalingData),
+      ).rejects.toThrow(SummaryAPIException);
     });
   });
 
@@ -209,6 +232,27 @@ describe('NewsSummaryService', () => {
 
       // then
       expect(result).toBe(5687); // 687 + 5000
+    });
+
+    test('클로바 토큰 계산 API 요청이 실패하면 TokenAPIException을 던진다', async () => {
+      // given
+      const mockClovaTokenRejection = {
+        response: {
+          data: {
+            status: {
+              code: '42901',
+              message: 'Too many requests - rate exceeded',
+            },
+          },
+        },
+      };
+      mockAxios.post.mockRejectedValue(mockClovaTokenRejection);
+      jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      // when & then
+      await expect(
+        newsSummaryService.calculateToken(mockCrwalingData),
+      ).rejects.toThrow(TokenAPIException);
     });
   });
 });
