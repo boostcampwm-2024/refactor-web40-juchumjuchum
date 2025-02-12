@@ -122,8 +122,8 @@ export class StockDataResponse {
       entity === StockDaily
         ? String(stockLiveData.volume)
         : String(
-            Number(this.volumeDtoList[lastIndex].volume) +
-              Number(stockLiveData.volume),
-          );
+          Number(this.volumeDtoList[lastIndex].volume) +
+          Number(stockLiveData.volume),
+        );
   }
 }

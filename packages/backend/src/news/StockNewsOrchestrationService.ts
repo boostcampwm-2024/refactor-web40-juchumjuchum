@@ -32,9 +32,8 @@ export class StockNewsOrchestrationService {
   private readonly INITIAL_RETRY_DELAY = 60000;  // 60초
   private readonly PROCESS_DELAY = 3000;  // 주식 처리 사이 대기 시간 (3초)
   
-  private getRetryDelay(retryCount: number): number {
+  private getRetryDelay(): number {
     return this.INITIAL_RETRY_DELAY;
-    // return this.INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
   }
 
   private async processStockNews(
@@ -91,7 +90,7 @@ export class StockNewsOrchestrationService {
       this.logger.error(`Error processing news for ${stock.name}:`, error);
       
       if (retryCount < this.MAX_RETRIES) {
-        const delay = this.getRetryDelay(retryCount);
+        const delay = this.getRetryDelay();
         this.logger.info(`Retrying ${stock.name} in ${delay/1000}s... (${retryCount + 1}/${this.MAX_RETRIES})`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.processStockNews(stock, retryCount + 1);
