@@ -48,6 +48,7 @@ describe('NewsSummaryService', () => {
     stockName: '삼성전자',
     news: [
       {
+        category: '경제',
         date: '2025.02.04',
         title: '삼성전자 실적 발표',
         content: '삼성전자가 좋은 실적을 발표했습니다.',
