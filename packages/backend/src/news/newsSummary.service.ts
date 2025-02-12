@@ -5,6 +5,12 @@ import { CreateStockNewsDto } from './dto/stockNews.dto';
 import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
+import {
+  SummaryFieldException,
+  SummaryJsonException,
+  SummaryAPIException,
+  TokenAPIException,
+} from './error/newsSummary.error';
 
 @Injectable()
 export class NewsSummaryService {
@@ -34,12 +40,12 @@ export class NewsSummaryService {
       return summarizedNews;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        this.logger.error(
-          `Failed to summarize news: status=${error.response?.data?.status?.code}, data=${error.response?.data?.status?.message}`,
+        throw new SummaryAPIException(
+          `${JSON.stringify(error.response?.data ?? error.message)}`,
+          error,
         );
-      } else {
-        this.logger.error('Unknown Error', error);
       }
+      throw error;
     }
   }
 
@@ -63,12 +69,12 @@ export class NewsSummaryService {
       return totalToken;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        this.logger.error(
-          `Failed to calculate token: status=${error.response?.data?.status?.code}, data=${error.response?.data?.status?.message}`,
+        throw new TokenAPIException(
+          `${JSON.stringify(error.response?.data ?? error.message)}`,
+          error,
         );
-      } else {
-        this.logger.error('Unknown Error', error);
       }
+      throw error;
     }
   }
 
@@ -186,13 +192,12 @@ export class NewsSummaryService {
       return summarizedNews;
     } catch (error) {
       if (Array.isArray(error)) {
-        this.logger.error(
-          `Wrong field format from clova response: ${JSON.stringify(error, null, 2)}`,
+        throw new SummaryFieldException(
+          `${JSON.stringify(error, null, 2)}`,
+          error,
         );
-      } else {
-        this.logger.error('Failed to parse clova response', error);
       }
-      return null;
+      throw new SummaryJsonException('Invalid JSON', error);
     }
   }
 
