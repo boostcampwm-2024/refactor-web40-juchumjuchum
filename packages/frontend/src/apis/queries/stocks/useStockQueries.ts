@@ -47,7 +47,7 @@ export const useStockQueries = ({ viewsLimit }: StockQueriesProps) => {
         queryFn: getStockIndex,
       },
       {
-        queryKey: ['topViews'],
+        queryKey: ['topMarketCap'],
         queryFn: () => getTopMarketCap({ limit: viewsLimit }),
       },
     ],
