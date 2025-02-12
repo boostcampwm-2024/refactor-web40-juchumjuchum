@@ -8,6 +8,7 @@ import { getOpenApi } from '../util/openapiUtil.api';
 import { Json, OpenapiQueue } from '@/scraper/openapi/queue/openapi.queue';
 import { Stock } from '@/stock/domain/stock.entity';
 import { StockLiveData } from '@/stock/domain/stockLiveData.entity';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class OpenapiLiveData {
@@ -17,7 +18,9 @@ export class OpenapiLiveData {
     private readonly datasource: DataSource,
     private readonly openapiQueue: OpenapiQueue,
     @Inject('winston') private readonly logger: Logger,
-  ) {}
+  ) {
+    this.initializeTopMarketCapStocks(); // 앱 시작시 시총 상위 10개 종목 실시간 데이터 요청
+  }
 
   async saveLiveData(data: StockLiveData) {
     await this.datasource.manager
@@ -77,7 +80,38 @@ export class OpenapiLiveData {
     return stockData;
   }
 
+  @Cron('30 7 * * *') // 매일 오전 7시 30분 (장 시작 전)
+  private async initializeTopMarketCapStocks() {
+    try {
+      const result = await this.datasource
+        .getRepository(Stock)
+        .createQueryBuilder('stock')
+        .leftJoin('stock_detail', 'stockDetail', 'stock.id = stockDetail.stock_id')
+        .select([
+          'stock.id AS id',
+          'stockDetail.marketCap AS marketCap',
+        ])
+        .orderBy('stockDetail.marketCap', 'DESC')
+        .limit(10)
+        .getRawMany();
+
+      // 각 종목에 대해 실시간 데이터 요청
+      result.forEach(stock => {
+        this.insertLiveDataRequest(stock.id);
+      });
+
+      this.logger.info('Top 10 market cap stocks initialized for live data', {
+        stocks: result.map(stock => stock.id)
+      });
+    } catch (error) {
+      this.logger.error('Failed to initialize top market cap stocks', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
   insertLiveDataRequest(stockId: string) {
+    this.logger.info(`Insert live data request for stockId : ${stockId}`);
     const query = this.makeLiveDataQuery(stockId);
     this.openapiQueue.enqueue({
       url: this.url,

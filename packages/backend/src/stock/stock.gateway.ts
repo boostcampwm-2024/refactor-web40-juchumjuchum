@@ -138,10 +138,10 @@ export class StockGateway implements OnGatewayDisconnect {
     change: number,
     volume: number,
   ) {
-    this.logger.info(
-      `Update stock ${stockId} with price: ${price}`,
-      { context: this.context }
-    );
+    // this.logger.info(
+    //   `Update stock ${stockId} with price: ${price}`,
+    //   { context: this.context }
+    // );
     this.server.to(stockId).emit('updateStock', { price, change, volume });
   }
 }
