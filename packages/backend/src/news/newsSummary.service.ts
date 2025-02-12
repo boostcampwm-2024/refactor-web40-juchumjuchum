@@ -59,10 +59,20 @@ export class NewsSummaryService {
         },
       );
 
-      const messages = clovaTokenResponse.data.result.messages;
-      const totalToken = messages.reduce((acc: number, message: any) => {
-        return acc + message.count;
-      }, 0);
+      const messages = clovaTokenResponse.data.result?.messages;
+      if (!messages || !Array.isArray(messages)) {
+        throw new TokenAPIException('Invalid clova token response format');
+      }
+
+      const totalToken = messages.reduce(
+        (acc: number, message: any): number => {
+          if (typeof message.count !== 'number') {
+            throw new TokenAPIException('Invalid clova token count format');
+          }
+          return acc + message.count;
+        },
+        0,
+      );
 
       this.logger.info(`token length: ${totalToken}`);
 
