@@ -3,6 +3,8 @@ import axios from 'axios';
 import { Logger } from 'winston';
 import { CreateStockNewsDto } from './dto/stockNews.dto';
 import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
+import { plainToInstance } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
 
 @Injectable()
 export class NewsSummaryService {
@@ -27,19 +29,7 @@ export class NewsSummaryService {
         },
       );
 
-      const content = this.verfiyClovaResponse(clovaResponse);
-      if (!content) {
-        return null;
-      }
-
-      const summarizedNews = new CreateStockNewsDto();
-      summarizedNews.stock_id = content.stock_id;
-      summarizedNews.stock_name = content.stock_name;
-      summarizedNews.link = content.link;
-      summarizedNews.title = content.title;
-      summarizedNews.summary = content.summary;
-      summarizedNews.positive_content = content.positive_content;
-      summarizedNews.negative_content = content.negative_content;
+      const summarizedNews = this.validateClovaResponse(clovaResponse);
 
       return summarizedNews;
     } catch (error) {
@@ -182,30 +172,43 @@ export class NewsSummaryService {
     };
   }
 
-  private verfiyClovaResponse(response: any) {
+  private async validateClovaResponse(response: any) {
     try {
       const content = response.data.result.message.content;
       this.logger.info(`Summarized news: ${content}`);
 
       const parsedContent = JSON.parse(content);
       const fixedContent = this.fixFieldNames(parsedContent);
-    
-      if (!('stock_id' in fixedContent) || !('stock_name' in fixedContent)) {
-        this.logger.error('Response is missing required fields: stock_id, stock_name');
-        return null;
-      }
 
-      return fixedContent;
+      const summarizedNews = plainToInstance(CreateStockNewsDto, fixedContent);
+      await validateOrReject(summarizedNews);
+
+      return summarizedNews;
     } catch (error) {
-      this.logger.error('Failed to parse clova response', error);
+      if (Array.isArray(error)) {
+        this.logger.error(
+          `Wrong field format from clova response: ${JSON.stringify(error, null, 2)}`,
+        );
+      } else {
+        this.logger.error('Failed to parse clova response', error);
+      }
       return null;
     }
   }
 
   private fixFieldNames(content: any) {
     const fieldMappings: Record<string, string> = {
-      'stockId': 'stock_id',
-      'stockName': 'stock_name',
+      stockId: 'stock_id',
+      StockId: 'stock_id',
+      StockName: 'stock_name',
+      stockName: 'stock_name',
+      Link: 'link',
+      Title: 'title',
+      Summary: 'summary',
+      PositiveContent: 'positive_content',
+      positiveContent: 'positive_content',
+      NegativeContent: 'negative_content',
+      negativeContent: 'negative_content',
     };
 
     return Object.keys(content).reduce((acc: any, key: string) => {
