@@ -1,7 +1,7 @@
 export class NewsItemDto {
   title: string;
-  original_link: string;
+  originallink: string;
   link: string;
   description: string;
-  pubDate: Date;
+  pubDate: string;
 }
