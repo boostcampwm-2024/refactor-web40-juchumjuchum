@@ -47,7 +47,7 @@ export const Stocks = () => {
 
       <article>
         <h2 className="display-bold16 text-dark-gray mb-5">
-          이 종목은 어떠신가요?
+          시가 총액 기준 top 10 종목이에요.
         </h2>
         <ErrorBoundary
           fallback={<p className="py-3">종목 정보를 불러오는데 실패했어요.</p>}

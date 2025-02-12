@@ -53,6 +53,13 @@ export class StockRepository {
       .getRawMany();
   }
 
+  async findByTopMarketCap(limit: number) {
+    return this.getStocksQuery()
+      .orderBy('stockDetail.marketCap', 'DESC') // 시가총액 내림차순
+      .limit(10) // 상위 10개
+      .getRawMany();
+  }
+
   findAllWithFluctuaions() {
     return this.getStocksQuery()
       .innerJoinAndSelect('stock.fluctuationRankStocks', 'rank')

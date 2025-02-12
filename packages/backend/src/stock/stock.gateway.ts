@@ -25,6 +25,17 @@ export class StockGateway implements OnGatewayDisconnect {
 
   private readonly users: Map<string, string> = new Map();
 
+  private readonly updateQueue = new Map<string, {
+    timer: NodeJS.Timeout;
+    lastUpdate: {
+      price: number;
+      change: number;
+      volume: number;
+    };
+  }>();
+
+  private readonly THROTTLE_TIME = 5000; // 5초
+
   constructor(
     private readonly liveData: LiveData,
     @Inject('winston') private readonly logger: Logger,
@@ -95,6 +106,39 @@ export class StockGateway implements OnGatewayDisconnect {
     change: number,
     volume: number,
   ) {
+    const existing = this.updateQueue.get(stockId);
+
+    if (existing) {
+      // 이미 대기중인 업데이트가 있다면 값만 갱신
+      existing.lastUpdate = { price, change, volume };
+      return;
+    }
+
+    // 첫 업데이트는 즉시 전송
+    this.emitStockUpdate(stockId, price, change, volume);
+
+    // 이후 업데이트는 스로틀링 적용
+    const timer = setInterval(() => {
+      const queuedUpdate = this.updateQueue.get(stockId);
+      if (queuedUpdate) {
+        const { price, change, volume } = queuedUpdate.lastUpdate;
+        this.emitStockUpdate(stockId, price, change, volume);
+      }
+    }, this.THROTTLE_TIME);
+
+    this.updateQueue.set(stockId, {
+      timer,
+      lastUpdate: { price, change, volume }
+    });
+  }
+
+  private emitStockUpdate(
+    stockId: string,
+    price: number,
+    change: number,
+    volume: number,
+  ) {
+    this.logger.info(`Update stock ${stockId} with price: ${price}`);
     this.server.to(stockId).emit('updateStock', { price, change, volume });
   }
 }
