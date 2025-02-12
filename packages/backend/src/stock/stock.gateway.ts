@@ -34,7 +34,7 @@ export class StockGateway implements OnGatewayDisconnect {
     };
   }>();
 
-  private readonly THROTTLE_TIME = 5000; // 5초
+  private readonly THROTTLE_TIME = 1000; // 5초
 
   constructor(
     private readonly liveData: LiveData,
