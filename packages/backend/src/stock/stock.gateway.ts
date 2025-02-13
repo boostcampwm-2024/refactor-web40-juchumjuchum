@@ -22,10 +22,10 @@ export class StockGateway implements OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
   private readonly mutex = new Mutex();
-
+  private readonly context = 'StockGateway';
   private readonly users: Map<string, string> = new Map();
-
-  private readonly updateQueue = new Map<string, {
+  private readonly updateQueue =
+    new Map<string, {
     timer: NodeJS.Timeout;
     lastUpdate: {
       price: number;

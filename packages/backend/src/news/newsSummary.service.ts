@@ -5,6 +5,12 @@ import { CreateStockNewsDto } from './dto/stockNews.dto';
 import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
+import {
+  SummaryFieldException,
+  SummaryJsonException,
+  SummaryAPIException,
+  TokenAPIException,
+} from './error/newsSummary.error';
 
 @Injectable()
 export class NewsSummaryService {
@@ -34,12 +40,12 @@ export class NewsSummaryService {
       return summarizedNews;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        this.logger.error(
-          `Failed to summarize news: status=${error.response?.data?.status?.code}, data=${error.response?.data?.status?.message}`,
+        throw new SummaryAPIException(
+          `${JSON.stringify(error.response?.data ?? error.message)}`,
+          error,
         );
-      } else {
-        this.logger.error('Unknown Error', error);
       }
+      throw error;
     }
   }
 
@@ -53,22 +59,32 @@ export class NewsSummaryService {
         },
       );
 
-      const messages = clovaTokenResponse.data.result.messages;
-      const totalToken = messages.reduce((acc: number, message: any) => {
-        return acc + message.count;
-      }, 0);
+      const messages = clovaTokenResponse.data.result?.messages;
+      if (!messages || !Array.isArray(messages)) {
+        throw new TokenAPIException('Invalid clova token response format');
+      }
+
+      const totalToken = messages.reduce(
+        (acc: number, message: any): number => {
+          if (typeof message.count !== 'number') {
+            throw new TokenAPIException('Invalid clova token count format');
+          }
+          return acc + message.count;
+        },
+        0,
+      );
 
       this.logger.info(`token length: ${totalToken}`);
 
       return totalToken;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        this.logger.error(
-          `Failed to calculate token: status=${error.response?.data?.status?.code}, data=${error.response?.data?.status?.message}`,
+        throw new TokenAPIException(
+          `${JSON.stringify(error.response?.data ?? error.message)}`,
+          error,
         );
-      } else {
-        this.logger.error('Unknown Error', error);
       }
+      throw error;
     }
   }
 
@@ -186,33 +202,29 @@ export class NewsSummaryService {
       return summarizedNews;
     } catch (error) {
       if (Array.isArray(error)) {
-        this.logger.error(
-          `Wrong field format from clova response: ${JSON.stringify(error, null, 2)}`,
+        throw new SummaryFieldException(
+          `${JSON.stringify(error, null, 2)}`,
+          error,
         );
-      } else {
-        this.logger.error('Failed to parse clova response', error);
       }
-      return null;
+      throw new SummaryJsonException('Invalid JSON', error);
     }
   }
 
   private fixFieldNames(content: any) {
     const fieldMappings: Record<string, string> = {
-      stockId: 'stock_id',
-      StockId: 'stock_id',
-      StockName: 'stock_name',
-      stockName: 'stock_name',
-      Link: 'link',
-      Title: 'title',
-      Summary: 'summary',
-      PositiveContent: 'positive_content',
-      positiveContent: 'positive_content',
-      NegativeContent: 'negative_content',
-      negativeContent: 'negative_content',
+      stockid: 'stock_id',
+      stockname: 'stock_name',
+      link: 'link',
+      title: 'title',
+      summary: 'summary',
+      positivecontent: 'positive_content',
+      negativecontent: 'negative_content',
     };
 
     return Object.keys(content).reduce((acc: any, key: string) => {
-      const fixedKey = fieldMappings[key] || key;
+      const lowKey = key.toLowerCase();
+      const fixedKey = fieldMappings[lowKey] || key;
       acc[fixedKey] = content[key];
       return acc;
     }, {});
