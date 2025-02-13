@@ -3,8 +3,8 @@ import * as DailyRotateFile from 'winston-daily-rotate-file';
 
 const { combine, timestamp, printf } = format;
 
-const logFormat = printf(({ level, message, timestamp }) => {
-  return `[${timestamp}][${level}]: ${message}`;
+const logFormat = printf(({ level, message, timestamp, context }) => {
+  return `[${timestamp}][${level}]${context ? `[${context}]` : ''}: ${message}`;
 });
 
 export const logger = createLogger({

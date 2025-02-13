@@ -4,6 +4,7 @@ import { NewsCrawlingService } from '@/news/newsCrawling.service';
 import { NewsSummaryService } from '@/news/newsSummary.service';
 import { StockNewsRepository } from '@/news/stockNews.repository';
 import { Cron } from '@nestjs/schedule';
+import { formatErrorMessage } from './error/formatErrorMessage';
 
 @Injectable()
 export class StockNewsOrchestrationService {
@@ -72,10 +73,6 @@ export class StockNewsOrchestrationService {
       this.logger.info('rawSummarizedData:');
       console.log(rawSummarizedData);
 
-      if (!rawSummarizedData) {
-        throw new Error(`Failed to summarize news for ${stock.name}`);
-      }
-
       const finalSummarizedData = {
         ...rawSummarizedData,
         stock_id: stock.id,
@@ -87,7 +84,8 @@ export class StockNewsOrchestrationService {
       return { success: true, stock };
       
     } catch (error) {
-      this.logger.error(`Error processing news for ${stock.name}:`, error);
+      const errorMessage = formatErrorMessage(error, stock.name);
+      this.logger.error(errorMessage);
       
       if (retryCount < this.MAX_RETRIES) {
         const delay = this.getRetryDelay();
