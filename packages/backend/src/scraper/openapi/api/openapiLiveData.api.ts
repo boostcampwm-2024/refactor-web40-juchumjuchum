@@ -96,9 +96,16 @@ export class OpenapiLiveData {
         .getRawMany();
 
       // 각 종목에 대해 실시간 데이터 요청
-      result.forEach(stock => {
-        this.insertLiveDataRequest(stock.id);
-      });
+      await Promise.all(
+        result.map(async (stock) => {
+          try {
+            this.insertLiveDataRequest(stock.id);
+          } catch (error) {
+            this.logger.error(`Failed to insert live data for stock ${stock.id}:`, error);
+            // 개별 실패는 전체 프로세스를 중단시키지 않음
+          }
+        })
+      );
 
       this.logger.info('Top 10 market cap stocks initialized for live data', {
         stocks: result.map(stock => stock.id)
