@@ -213,21 +213,18 @@ export class NewsSummaryService {
 
   private fixFieldNames(content: any) {
     const fieldMappings: Record<string, string> = {
-      stockId: 'stock_id',
-      StockId: 'stock_id',
-      StockName: 'stock_name',
-      stockName: 'stock_name',
-      Link: 'link',
-      Title: 'title',
-      Summary: 'summary',
-      PositiveContent: 'positive_content',
-      positiveContent: 'positive_content',
-      NegativeContent: 'negative_content',
-      negativeContent: 'negative_content',
+      stockid: 'stock_id',
+      stockname: 'stock_name',
+      link: 'link',
+      title: 'title',
+      summary: 'summary',
+      positivecontent: 'positive_content',
+      negativecontent: 'negative_content',
     };
 
     return Object.keys(content).reduce((acc: any, key: string) => {
-      const fixedKey = fieldMappings[key] || key;
+      const lowKey = key.toLowerCase();
+      const fixedKey = fieldMappings[lowKey] || key;
       acc[fixedKey] = content[key];
       return acc;
     }, {});
