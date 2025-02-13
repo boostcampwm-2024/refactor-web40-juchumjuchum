@@ -32,7 +32,6 @@ export class NewsCrawlingService {
           'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET,
         },
       }).then((r) => r.data);
-
       // 네이버 뉴스만 필터링 후 상위 5개만 선택
       const naverNews = await this.extractNaverNews(res);
       const limitedNews = naverNews.slice(0, this.MAX_NEWS_COUNT);
