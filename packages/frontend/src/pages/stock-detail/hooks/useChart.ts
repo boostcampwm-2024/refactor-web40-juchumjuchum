@@ -41,7 +41,7 @@ export const useChart = ({
   const chart = useRef<IChartApi>();
   const candleSeries = useRef<ReturnType<IChartApi['addCandlestickSeries']>>();
   const volumeSeries = useRef<ReturnType<IChartApi['addHistogramSeries']>>();
-  const containerInstance = containerRef.current;
+  //const containerInstance = containerRef.current;
 
   const { theme } = useContext(ThemeContext);
   const graphTheme = theme
@@ -51,6 +51,7 @@ export const useChart = ({
     : lightTheme;
 
   useEffect(() => {
+    const containerInstance =containerRef.current;
     if (!containerInstance) return;
 
     chart.current = createChart(containerInstance, {
@@ -75,9 +76,14 @@ export const useChart = ({
     );
 
     return () => {
-      chart.current?.remove();
+      if(chart.current){
+        chart.current.remove();
+        chart.current = undefined;
+      }
+      candleSeries.current = undefined;
+      volumeSeries.current = undefined;
     };
-  }, [containerInstance]);
+  }, [containerRef]);
 
   useEffect(() => {
     if (!chart.current || !candleSeries.current) return;
