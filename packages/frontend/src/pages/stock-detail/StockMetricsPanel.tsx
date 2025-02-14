@@ -63,7 +63,7 @@ export const StockMetricsPanel = ({
 
   return (
     <article className="flex flex-1 flex-col gap-10 rounded-md bg-white p-6 shadow">
-      {!price || !change || !volume ? (
+      {price === 0 && change === 0 && volume === 0 ? (
         <section className="grid w-9/12 lg:grid-cols-2 lg:grid-rows-2">
           {Array.from({ length: 4 }, () => (
             <Lottie
