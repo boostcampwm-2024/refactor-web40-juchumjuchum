@@ -93,16 +93,26 @@ export class NewsCrawlingService {
   }
 
   isAvailableCategory(category: string) {
-    return category !== this.category.ECONOMICS &&
+    return (
+      category !== this.category.ECONOMICS &&
       category !== this.category.IT &&
-      category !== this.category.WORLD;
+      category !== this.category.WORLD
+    );
   }
 
-  isSameDate(date1: Date, date2: Date) {
+  changeToKorTime() {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    return new Date(utc + 9 * 60 * 60000);
+  }
+
+  isSameDate(date: string, now: Date) {
+    const parsedDate = new Date(date);
+
     return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getDate() === date2.getDate()
+      parsedDate.getFullYear() === now.getFullYear() &&
+      parsedDate.getMonth() === now.getMonth() &&
+      parsedDate.getDate() === now.getDate()
     );
   }
 }
