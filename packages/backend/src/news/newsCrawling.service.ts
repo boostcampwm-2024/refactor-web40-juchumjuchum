@@ -76,6 +76,8 @@ export class NewsCrawlingService {
             return null;
           }
           const date = $('span._ARTICLE_DATE_TIME').attr('data-date-time');
+          console.log(`date : ${date} , Date.parser : ${Date.parse(date!)}`);
+
           const title = $('#title_area').text();
           const content = $('#dic_area').text();
 
@@ -93,5 +95,13 @@ export class NewsCrawlingService {
       stockName: stock,
       news: crawledNews.filter((n) => n !== null),
     } as CrawlingDataDto;
+  }
+
+  isSameDate(date1: Date, date2: Date) {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
   }
 }
