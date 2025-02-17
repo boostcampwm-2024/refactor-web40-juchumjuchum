@@ -15,6 +15,7 @@ import {
 import { StockModule } from '@/stock/stock.module';
 import { UserModule } from '@/user/user.module';
 import { StockNewsModule } from '@/news/stockNews.module';
+import { CustomLoggerModule } from './common/logger/customLogger.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { StockNewsModule } from '@/news/stockNews.module';
     ChatModule,
     SessionModule,
     StockNewsModule,
+    CustomLoggerModule,
   ],
   controllers: [],
   providers: [],
