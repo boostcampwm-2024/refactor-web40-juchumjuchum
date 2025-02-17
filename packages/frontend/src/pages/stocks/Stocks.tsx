@@ -2,10 +2,10 @@ import { lazy, Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
 import { StockIndexCard } from './components/StockIndexCard';
-import { StockInfoCard } from './components/StockInfoCard';
 import { usePostStockView } from '@/apis/queries/stock-detail';
 import { useStockQueries } from '@/apis/queries/stocks';
 import { Loader } from '@/components/ui/loader';
+import { StockInfoCard } from '@/pages/stocks/components/StockInfoCard.tsx';
 
 const StockRankingTable = lazy(() => import('./StockRankingTable'));
 
@@ -13,8 +13,9 @@ const LIMIT = 5;
 
 export const Stocks = () => {
   const navigate = useNavigate();
-
-  const [stockIndex, topViews] = useStockQueries({ viewsLimit: LIMIT });
+  const [{ data: stockIndexData }, { data: topMarketCapData }] = useStockQueries({ 
+    viewsLimit: LIMIT 
+  });
   const { mutate } = usePostStockView();
 
   return (
@@ -29,7 +30,7 @@ export const Stocks = () => {
         >
           <Suspense fallback={<Loader />}>
             <div className="flex flex-col gap-5 lg:grid lg:w-fit lg:grid-cols-3">
-              {stockIndex.data.map((info) => (
+              {stockIndexData.map((info) => (
                 <StockIndexCard
                   key={info.name}
                   name={info.name}
@@ -54,13 +55,14 @@ export const Stocks = () => {
         >
           <Suspense fallback={<Loader />}>
             <div className="flex flex-col gap-5 lg:grid lg:w-fit lg:grid-cols-5">
-              {topViews.data.map((stock, index) => (
+              {topMarketCapData.map((stock, index) => (
                 <StockInfoCard
                   key={stock.id}
                   index={index}
                   name={stock.name || ''}
                   currentPrice={stock.currentPrice || 0}
                   changeRate={stock.changeRate || 0}
+                  news={stock.news}
                   onClick={() => {
                     mutate({ stockId: stock.id ?? '' });
                     navigate(`/stocks/${stock.id}`);

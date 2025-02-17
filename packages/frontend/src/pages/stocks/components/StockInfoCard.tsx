@@ -1,18 +1,27 @@
-import { type GetStockTopViewsResponse } from '@/apis/queries/stocks';
 import { cn } from '@/utils/cn';
 
-interface StockInfoCardProps extends GetStockTopViewsResponse {
-  index: number;
-  onClick: () => void;
+interface StockInfoCardProps {
+  index?: number;
+  name?: string;
+  currentPrice?: number;
+  changeRate?: number;
+  news?: {
+    positive_content: string | null;
+    negative_content: string | null;
+  };
+  onClick?: () => void;
 }
 
 export const StockInfoCard = ({
   name,
   currentPrice,
-  changeRate,
-  index,
+  changeRate = 0,
+  index = 0,
+  news,
   onClick,
-}: Partial<StockInfoCardProps>) => {
+}: StockInfoCardProps) => {
+  console.log('StockInfoCard props:', { name, currentPrice, changeRate, index, news });
+
   return (
     <div
       className={cn(
@@ -28,7 +37,7 @@ export const StockInfoCard = ({
           <span
             className={cn(
               'xl:display-bold16 display-bold12',
-              changeRate && changeRate >= 0 ? 'text-red' : 'text-blue',
+              changeRate >= 0 ? 'text-red' : 'text-blue',
             )}
           >
             {changeRate}%
@@ -41,6 +50,18 @@ export const StockInfoCard = ({
           </span>
         </div>
       </section>
+      {news && (
+        <section className="mt-2 text-sm">
+          <div className="text-green-600">
+            <span className="font-semibold">호재:</span>{' '}
+            {news.positive_content || '해당사항 없음'}
+          </div>
+          <div className="text-red-600">
+            <span className="font-semibold">악재:</span>{' '}
+            {news.negative_content || '해당사항 없음'}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
