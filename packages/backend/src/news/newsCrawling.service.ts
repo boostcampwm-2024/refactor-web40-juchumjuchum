@@ -71,7 +71,11 @@ export class NewsCrawlingService {
           if (this.isAvailableCategory(category)) {
             return null;
           }
+
           const date = $('span._ARTICLE_DATE_TIME').attr('data-date-time');
+          if (!this.isSameDate(date!)) {
+            return null;
+          }
 
           const title = $('#title_area').text();
           const content = $('#dic_area').text();
@@ -106,9 +110,9 @@ export class NewsCrawlingService {
     return new Date(utc + 9 * 60 * 60000);
   }
 
-  isSameDate(date: string, now: Date) {
+  isSameDate(date: string) {
     const parsedDate = new Date(date);
-
+    const now = this.changeToKorTime();
     return (
       parsedDate.getFullYear() === now.getFullYear() &&
       parsedDate.getMonth() === now.getMonth() &&
