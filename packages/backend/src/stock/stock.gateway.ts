@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -9,8 +9,8 @@ import {
 } from '@nestjs/websockets';
 import { Mutex } from 'async-mutex';
 import { Server, Socket } from 'socket.io';
-import { Logger } from 'winston';
 import { LiveData } from '@/scraper/openapi/liveData.service';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @WebSocketGateway({
   namespace: '/api/stock/realtime',
@@ -24,21 +24,22 @@ export class StockGateway implements OnGatewayDisconnect {
   private readonly mutex = new Mutex();
   private readonly context = 'StockGateway';
   private readonly users: Map<string, string> = new Map();
-  private readonly updateQueue =
-    new Map<string, {
-    timer: NodeJS.Timeout;
-    lastUpdate: {
-      price: number;
-      change: number;
-      volume: number;
-    };
-  }>();
-
-  private readonly THROTTLE_TIME = 1000; // 5초
+  private readonly updateQueue = new Map<
+    string,
+    {
+      timer: NodeJS.Timeout;
+      lastUpdate: {
+        price: number;
+        change: number;
+        volume: number;
+      };
+    }
+  >();
+  private readonly THROTTLE_TIME = 1000; // 1초
 
   constructor(
     private readonly liveData: LiveData,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {}
 
   private async handleJoinToRoom(stockId: string) {
@@ -46,7 +47,7 @@ export class StockGateway implements OnGatewayDisconnect {
 
     if (connectedSockets.length > 0 && !this.liveData.isSubscribe(stockId)) {
       await this.liveData.subscribe(stockId);
-      this.logger.info(`${stockId} is subscribed`);
+      this.customLogger.info(`${stockId} is subscribed`, this.context);
     }
   }
 
@@ -72,7 +73,7 @@ export class StockGateway implements OnGatewayDisconnect {
       });
     } catch (e) {
       const error = e as Error;
-      this.logger.warn(error.message);
+      this.customLogger.warn(error.message, this.context);
       client.emit('error', error.message);
       client.disconnect();
     }
@@ -128,7 +129,7 @@ export class StockGateway implements OnGatewayDisconnect {
 
     this.updateQueue.set(stockId, {
       timer,
-      lastUpdate: { price, change, volume }
+      lastUpdate: { price, change, volume },
     });
   }
 

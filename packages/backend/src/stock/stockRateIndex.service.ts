@@ -1,25 +1,28 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { Logger } from 'winston';
 import { StockLiveData } from './domain/stockLiveData.entity';
 import { StockIndexRateResponse } from './dto/stockIndexRate.response';
 import { IndexRateGroupCode } from '@/scraper/openapi/type/openapiIndex.type';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @Injectable()
 export class StockRateIndexService {
+  private readonly context = 'StockRateIndexService';
+
   constructor(
     private readonly datasource: DataSource,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {}
 
   async getRateIndexData(groupCode: IndexRateGroupCode) {
+    this.customLogger.info(`get rate index data for group code: ${groupCode}`, this.context);
     const result = await this.datasource.manager.find(StockLiveData, {
       where: { stock: { groupCode } },
       relations: ['stock'],
     });
 
     if (!result.length) {
-      this.logger.warn(`Rate data not found for group code: ${groupCode}`);
+      this.customLogger.warn(`Rate data not found for group code: ${groupCode}`, this.context);
       throw new NotFoundException('Rate data not found');
     }
     return result;

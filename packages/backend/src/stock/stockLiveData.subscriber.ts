@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   EventSubscriber,
   EntitySubscriberInterface,
@@ -6,19 +6,21 @@ import {
   InsertEvent,
   DataSource,
 } from 'typeorm';
-import { Logger } from 'winston';
 import { StockLiveData } from './domain/stockLiveData.entity';
 import { StockGateway } from './stock.gateway';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @Injectable()
 @EventSubscriber()
 export class StockLiveDataSubscriber
   implements EntitySubscriberInterface<StockLiveData>
 {
+  private readonly context = 'StockLiveDataSubscriber';
+  
   constructor(
     private readonly datasource: DataSource,
     private readonly stockGateway: StockGateway,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {
     this.datasource.subscribers.push(this);
   }
@@ -37,10 +39,11 @@ export class StockLiveDataSubscriber
         volume: volume,
       } = entity;
 
+      this.customLogger.info(`after insert for stock: ${stockId}`, this.context);
       this.stockGateway.onUpdateStock(stockId, price, change, volume);
     } catch (error) {
-      this.logger.warn(
-        `Failed to handle stock live data afterInsert event : ${error}`,
+      this.customLogger.warn(
+        `Failed to handle stock live data afterInsert event: ${error}`, this.context
       );
     }
   }
@@ -58,20 +61,22 @@ export class StockLiveDataSubscriber
           volume: volume,
         } = updatedStockLiveData;
 
+        this.customLogger.info(`after update for stock: ${stockId}`, this.context);
         this.stockGateway.onUpdateStock(stockId, price, change, volume);
       } else {
-        this.logger.warn(
-          `Stock ID missing for updated data : ${updatedStockLiveData?.id}`,
+        this.customLogger.warn(
+          `Stock ID missing for updated data: ${updatedStockLiveData?.id}`, this.context
         );
       }
     } catch (error) {
-      this.logger.warn(
-        `Failed to handle stock live data afterUpdate event : ${error}`,
+      this.customLogger.warn(
+        `Failed to handle stock live data afterUpdate event: ${error}`, this.context
       );
     }
   }
 
   private async loadUpdatedData(event: UpdateEvent<StockLiveData>) {
+    this.customLogger.info(`load updated data for stock: ${event.databaseEntity.id}`, this.context);
     return event.manager.findOne(StockLiveData, {
       where: { id: event.databaseEntity.id },
     });
