@@ -68,15 +68,10 @@ export class NewsCrawlingService {
           const category = $(
             'li.Nlist_item._LNB_ITEM.is_active .Nitem_link_menu',
           ).text();
-          if (
-            category !== this.category.ECONOMICS &&
-            category !== this.category.IT &&
-            category !== this.category.WORLD
-          ) {
+          if (this.isAvailableCategory(category)) {
             return null;
           }
           const date = $('span._ARTICLE_DATE_TIME').attr('data-date-time');
-          console.log(`date : ${date} , Date.parser : ${Date.parse(date!)}`);
 
           const title = $('#title_area').text();
           const content = $('#dic_area').text();
@@ -95,6 +90,12 @@ export class NewsCrawlingService {
       stockName: stock,
       news: crawledNews.filter((n) => n !== null),
     } as CrawlingDataDto;
+  }
+
+  isAvailableCategory(category: string) {
+    return category !== this.category.ECONOMICS &&
+      category !== this.category.IT &&
+      category !== this.category.WORLD;
   }
 
   isSameDate(date1: Date, date2: Date) {
