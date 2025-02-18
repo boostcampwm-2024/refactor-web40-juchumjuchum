@@ -24,6 +24,7 @@ export class OpenapiQueue {
   private queue: PriorityQueue<OpenapiQueueNodeValue> = new PriorityQueue();
   constructor() {}
 
+  // TODO: value.count의 기본값이 5인 상태인데, 현재 등록된 API KEY가 1개이기 때문에 문제가 발생할 수 있음
   enqueue(value: OpenapiQueueNodeValue, priority?: number) {
     if (!priority) priority = 2;
     if (value.count === undefined) value.count = 5;
@@ -110,7 +111,7 @@ export class OpenapiConsumer {
       }
       this.customLogger.warn(`OpenAPI queue warning - URL:${node.url}, trId: ${node.trId}`, error, this.context);
       this.customLogger.warn('Warning details', error, this.context);
-      this.customLogger.warn(`Retries left: ${node.count}`, this.context);
+      this.customLogger.warn(`Retries left: ${node.count - 1}`, this.context);
       node.count -= 1;
       this.queue.enqueue(node, 1);
     }

@@ -21,6 +21,8 @@ export class OpenapiRankViewApi {
     setTimeout(() => this.getTopViewsStockLiveData(), 6000);
   }
 
+  // TODO: 현재 조회수 상위 10개 종목을 1분마다 openAPI로 요청하고 있는데,
+  // 현재는 조회수 상위 10개를 보여주고 있지 않기 때문에 삭제하거나 "시가총액" 상위 10개 종목으로 변경해야 함
   @Cron('*/1 9-15 * * 1-5')
   async getTopViewsStockLiveData() {
     this.customLogger.info('Enqueue getTopViewsStockLiveData requests', this.context);
