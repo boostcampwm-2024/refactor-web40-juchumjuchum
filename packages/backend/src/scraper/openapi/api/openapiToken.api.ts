@@ -1,18 +1,20 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
-import { Logger } from 'winston';
 import { OpenapiToken } from '../../domain/openapiToken.entity';
 import { openApiConfig } from '../config/openapi.config';
 import { OpenapiException } from '../util/openapiCustom.error';
 import { postOpenApi } from '../util/openapiUtil.api';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @Injectable()
 export class OpenapiTokenApi {
+  private readonly context = 'OpenapiTokenApi';
   private config: (typeof openApiConfig)[] = [];
+
   constructor(
-    @Inject('winston') private readonly logger: Logger,
     private readonly datasource: DataSource,
+    private readonly customLogger: CustomLogger,
   ) {
     const accounts = openApiConfig.STOCK_ACCOUNT!.split(',');
     const api_keys = openApiConfig.STOCK_API_KEY!.split(',');
@@ -22,7 +24,7 @@ export class OpenapiTokenApi {
       accounts.length !== api_keys.length ||
       api_passwords.length !== api_keys.length
     ) {
-      this.logger.warn('Open API Config Error');
+      this.customLogger.warn('Open API Config Error', this.context);
     }
     for (let i = 0; i < accounts.length; i++) {
       this.config.push({
@@ -41,6 +43,7 @@ export class OpenapiTokenApi {
 
   @Cron('30 0 * * *')
   async init() {
+    this.customLogger.info('Initialize OpenAPI token', this.context);
     const expired_config = this.config.filter(
       (val) =>
         this.isTokenExpired(val.STOCK_API_TIMEOUT) &&
@@ -52,8 +55,7 @@ export class OpenapiTokenApi {
     const config = await this.getPropertyFromDB(tokens);
     const expired = config.filter(
       (val) =>
-        this.isTokenExpired(val.api_token_expire) &&
-        this.isTokenExpired(val.websocket_key_expire),
+        this.isTokenExpired(val.api_token_expire) && this.isTokenExpired(val.websocket_key_expire),
     );
 
     if (expired.length || !config.length) {
@@ -97,12 +99,7 @@ export class OpenapiTokenApi {
     const result: OpenapiToken[] = [];
     config.forEach((val) => {
       const token = new OpenapiToken();
-      if (
-        val.STOCK_URL &&
-        val.STOCK_ACCOUNT &&
-        val.STOCK_API_KEY &&
-        val.STOCK_API_PASSWORD
-      ) {
+      if (val.STOCK_URL && val.STOCK_ACCOUNT && val.STOCK_API_KEY && val.STOCK_API_PASSWORD) {
         token.api_url = val.STOCK_URL;
         token.account = val.STOCK_ACCOUNT;
         token.api_key = val.STOCK_API_KEY;
@@ -118,6 +115,7 @@ export class OpenapiTokenApi {
   }
 
   private async savePropertyToDB(tokens: OpenapiToken[]) {
+    this.customLogger.info('Save OpenAPI Tokens to DB', this.context);
     tokens.forEach(async (val) => {
       this.datasource.manager.save(OpenapiToken, val);
     });
@@ -125,18 +123,16 @@ export class OpenapiTokenApi {
 
   private async getPropertyFromDB(tokens: OpenapiToken[]) {
     const result: OpenapiToken[] = [];
+    this.customLogger.info('Get OpenAPI Tokens from DB', this.context);
     await Promise.all(
       tokens.map(async (val) => {
-        const findByToken = await this.datasource.manager.findOne(
-          OpenapiToken,
-          {
-            where: {
-              account: val.account,
-              api_key: val.api_key,
-              api_password: val.api_password,
-            },
+        const findByToken = await this.datasource.manager.findOne(OpenapiToken, {
+          where: {
+            account: val.account,
+            api_key: val.api_key,
+            api_password: val.api_password,
           },
-        );
+        });
         if (findByToken) {
           result.push(findByToken);
         }
@@ -154,12 +150,14 @@ export class OpenapiTokenApi {
       await this.initWebSocketKey();
     } catch (error) {
       if (error instanceof Error) {
-        this.logger.warn(
+        this.customLogger.warn(
           `Request failed: ${error.message}. Retrying in ${delayMinute} minute...`,
+          this.context,
         );
       } else {
-        this.logger.warn(
+        this.customLogger.warn(
           `Request failed. Retrying in ${delayMinute} minute...`,
+          this.context,
         );
         setTimeout(async () => {
           await this.initAccessToken();
@@ -170,6 +168,7 @@ export class OpenapiTokenApi {
   }
 
   private async initAccessToken() {
+    this.customLogger.info(`Initializing access token: ${this.config}`, this.context);
     const updatedConfig = await Promise.all(
       this.config.map(async (val) => {
         val.STOCK_API_TOKEN = await this.getToken(val)!;
@@ -177,10 +176,11 @@ export class OpenapiTokenApi {
       }),
     );
     this.config = updatedConfig;
-    this.logger.info(`Init access token : ${this.config}`);
+    this.customLogger.info(`Initialized access token: ${this.config}`, this.context);
   }
 
   private async initWebSocketKey() {
+    this.customLogger.info(`Initializing websocket key: ${this.config}`, this.context);
     const updatedConfig = await Promise.all(
       this.config.map(async (val) => {
         val.STOCK_WEBSOCKET_KEY = await this.getWebSocketKey(val)!;
@@ -188,7 +188,7 @@ export class OpenapiTokenApi {
       }),
     );
     this.config = updatedConfig;
-    this.logger.info(`Init websocket token : ${this.config}`);
+    this.customLogger.info(`Initialized websocket key: ${this.config}`, this.context);
   }
 
   private async getToken(config: typeof openApiConfig): Promise<string> {

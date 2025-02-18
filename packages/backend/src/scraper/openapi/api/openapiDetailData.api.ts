@@ -1,7 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
-import { Logger } from 'winston';
 import { openApiConfig } from '../config/openapi.config';
 import { DetailData, isDetailData } from '../type/openapiDetailData.type';
 import { TR_ID } from '../type/openapiUtil.type';
@@ -10,22 +9,25 @@ import { Openapi } from './openapi.abstract';
 import { OpenapiTokenApi } from './openapiToken.api';
 import { Stock } from '@/stock/domain/stock.entity';
 import { StockDetail } from '@/stock/domain/stockDetail.entity';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @Injectable()
 export class OpenapiDetailData extends Openapi {
   private readonly TR_ID: TR_ID = 'FHKST01010100';
-  private readonly url: string =
-    '/uapi/domestic-stock/v1/quotations/inquire-price';
+  private readonly url: string = '/uapi/domestic-stock/v1/quotations/inquire-price';
+  private readonly context = 'OpenapiDetailData';
+
   constructor(
-    @Inject('winston') private readonly logger: Logger,
     protected readonly datasource: DataSource,
     protected readonly config: OpenapiTokenApi,
+    private readonly customLogger: CustomLogger,
   ) {
     super(datasource, config, 100);
   }
 
   @Cron('35 0 * * 2-6')
   async start() {
+    this.customLogger.info('Start OpenapiDetailData', this.context);
     super.start();
   }
 
@@ -38,7 +40,11 @@ export class OpenapiDetailData extends Openapi {
         await this.save(entity);
       }
     } catch (error) {
-      this.logger.warn(`Error in detail data : ${error}`);
+      this.customLogger.warn(
+        `Failed to save detail data for stock: ${stock.id}}, retrying after 100ms`,
+        error,
+        this.context,
+      );
       setTimeout(() => this.step(idx, stock), 100);
     }
   }
@@ -70,6 +76,7 @@ export class OpenapiDetailData extends Openapi {
   }
 
   protected async save(saveEntity: StockDetail) {
+    this.customLogger.info(`Save detail data to DB, stock: ${saveEntity.stock.id}`, this.context);
     const entity = StockDetail;
     const manager = this.datasource.manager;
     await manager
@@ -77,10 +84,7 @@ export class OpenapiDetailData extends Openapi {
       .insert()
       .into(entity)
       .values(saveEntity)
-      .orUpdate(
-        ['market_cap', 'eps', 'per', 'high52w', 'low52w', 'updated_at'],
-        ['stock_id'],
-      )
+      .orUpdate(['market_cap', 'eps', 'per', 'high52w', 'low52w', 'updated_at'], ['stock_id'])
       .execute();
   }
 }

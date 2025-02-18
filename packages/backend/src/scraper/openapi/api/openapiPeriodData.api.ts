@@ -1,7 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource, QueryFailedError } from 'typeorm';
-import { Logger } from 'winston';
 import {
   ChartData,
   isChartData,
@@ -21,6 +20,7 @@ import {
   StockWeekly,
   StockYearly,
 } from '@/stock/domain/stockData.entity';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 const DATE_TO_ENTITY = {
   D: StockDaily,
@@ -38,19 +38,21 @@ export const DATE_TO_MONTH = {
 
 @Injectable()
 export class OpenapiPeriodData {
-  private readonly url: string =
-    '/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice';
+  private readonly url: string = '/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice';
+  private readonly context = 'OpenapiPeriodData';
+
   constructor(
     private readonly datasource: DataSource,
     private readonly openApiToken: OpenapiTokenApi,
     private readonly openApiQueue: OpenapiQueue,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {
     //this.getItemChartPriceCheck();
   }
 
   @Cron('0 1 * * 2-6')
   async getItemChartPriceCheck() {
+    this.customLogger.info('Start getItemChartPriceCheck', this.context);
     if (process.env.NODE_ENV !== 'production') return;
     const stocks = await this.datasource.manager.find(Stock, {
       where: {
@@ -77,9 +79,7 @@ export class OpenapiPeriodData {
           const stockData = this.convertObjectToStockData(item, stockId);
           acc.push(stockData);
           promises.push(
-            this.insertChartData(stockData, period).catch((e) =>
-              this.catchAndLogError(e, stockId),
-            ),
+            this.insertChartData(stockData, period).catch((e) => this.catchAndLogError(e, stockId)),
           );
           return acc;
         }, [])
@@ -97,16 +97,13 @@ export class OpenapiPeriodData {
     const end = getTodayDate();
     const start = getPreviousDate(end, DATE_TO_MONTH[period]);
     const query = this.getItemChartPriceQuery(stockId, start, end, period);
+    this.customLogger.info('Enqueue insertCartData requests', this.context);
     this.openApiQueue.enqueue(
       {
         url: this.url,
         query,
         trId: TR_IDS.ITEM_CHART_PRICE,
-        callback: this.getInsertCartDataRequestCallback(
-          resolve,
-          stockId,
-          period,
-        ),
+        callback: this.getInsertCartDataRequestCallback(resolve, stockId, period),
       },
       1,
     );
@@ -123,16 +120,14 @@ export class OpenapiPeriodData {
   }
 
   private catchAndLogError(e: Error, stockId: string) {
-    if (
-      e instanceof QueryFailedError &&
-      e.driverError.message.includes('duplicate')
-    ) {
-      this.logger.warn(
-        `when insert missing chart data, duplicate error :${stockId}`,
+    if (e instanceof QueryFailedError && e.driverError.message.includes('duplicate')) {
+      this.customLogger.warn(
+        `when insert missing chart data, duplicate error: ${stockId}`,
+        this.context,
       );
       return;
     }
-    this.logger.error(e);
+    this.customLogger.error(e, this.context);
   }
 
   /**
@@ -142,9 +137,7 @@ export class OpenapiPeriodData {
     return async (data: Json) => {
       if (!data.output2 || !Array.isArray(data.output2)) return;
       // 이거 빈값들어오는 케이스 있음(빈값 필터링 안하면 요청이 매우 많아짐)
-      data.output2 = data.output2.filter(
-        (data) => Object.keys(data).length !== 0,
-      );
+      data.output2 = data.output2.filter((data) => Object.keys(data).length !== 0);
       if (data.output2.length === 0) return;
       await this.saveChartData(period, stockId, data.output2 as ChartData[]);
     };
@@ -162,6 +155,7 @@ export class OpenapiPeriodData {
 
     const query = this.getItemChartPriceQuery(stock.id!, start, end, period);
 
+    this.customLogger.info('Enqueue processStockData requests', this.context);
     this.openApiQueue.enqueue({
       url: this.url,
       query,
@@ -170,10 +164,7 @@ export class OpenapiPeriodData {
     });
   }
 
-  private updateDates(
-    endDate: string,
-    period: Period,
-  ): { endDate: string; startDate: string } {
+  private updateDates(endDate: string, period: Period): { endDate: string; startDate: string } {
     endDate = getPreviousDate(endDate, DATE_TO_MONTH[period]);
     const startDate = getPreviousDate(endDate, DATE_TO_MONTH[period]);
     return { endDate, startDate };
@@ -194,6 +185,7 @@ export class OpenapiPeriodData {
 
     // db 쿼리 전 최근 데이터인지 먼저 확인
     if (this.isSamePeriod(stock, period, new Date())) {
+      this.customLogger.info('Get pastOneData from DB', this.context);
       const pastOneData = await manager
         .createQueryBuilder()
         .from(entity, 'stock')
@@ -201,25 +193,20 @@ export class OpenapiPeriodData {
         .limit(1)
         .orderBy('stock.start_time', 'DESC')
         .execute();
-      if (
-        pastOneData.length !== 0 &&
-        this.isSamePeriod(stock, period, pastOneData[0].start_time)
-      ) {
+      if (pastOneData.length !== 0 && this.isSamePeriod(stock, period, pastOneData[0].start_time)) {
+        this.customLogger.info('Delete and Insert chart data to DB', this.context);
         await manager.delete(entity, pastOneData[0].id);
         await manager.insert(entity, stock);
         return;
       }
     }
     if (!(await this.existsChartData(stock, entity))) {
+      this.customLogger.info('Insert chart data to DB', this.context);
       await manager.save(entity, stock);
     }
   }
 
-  private async saveChartData(
-    period: Period,
-    stockId: string,
-    data: ChartData[],
-  ) {
+  private async saveChartData(period: Period, stockId: string, data: ChartData[]) {
     for (const item of data) {
       if (!isChartData(item)) {
         continue;
@@ -230,36 +217,22 @@ export class OpenapiPeriodData {
   }
 
   /* eslint-disable-next-line max-lines-per-function */
-  private getLiveDataSaveUntilEndCallback(
-    stockId: string,
-    period: Period,
-    end: string,
-  ) {
+  private getLiveDataSaveUntilEndCallback(stockId: string, period: Period, end: string) {
     /* eslint-disable-next-line max-lines-per-function */
     return async (data: Json) => {
       if (!data.output2 || !Array.isArray(data.output2)) return;
       // 이거 빈값들어오는 케이스 있음(빈값 필터링 안하면 요청이 매우 많아짐)
-      data.output2 = data.output2.filter(
-        (data) => Object.keys(data).length !== 0,
-      );
+      data.output2 = data.output2.filter((data) => Object.keys(data).length !== 0);
       if (data.output2.length === 0) return;
       await this.saveChartData(period, stockId, data.output2 as ChartData[]);
       const { endDate, startDate } = this.updateDates(end, period);
-      const query = this.getItemChartPriceQuery(
-        stockId,
-        startDate,
-        endDate,
-        period,
-      );
+      const query = this.getItemChartPriceQuery(stockId, startDate, endDate, period);
+      this.customLogger.info('Enqueue getLiveDataSaveUntilEnd requests', this.context);
       this.openApiQueue.enqueue({
         url: this.url,
         query,
         trId: TR_IDS.ITEM_CHART_PRICE,
-        callback: this.getLiveDataSaveUntilEndCallback(
-          stockId,
-          period,
-          endDate,
-        ),
+        callback: this.getLiveDataSaveUntilEndCallback(stockId, period, endDate),
       });
     };
   }
