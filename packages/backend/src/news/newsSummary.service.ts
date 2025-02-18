@@ -106,6 +106,18 @@ export class NewsSummaryService {
   private getSystemPrompt() {
     return `당신은 AI 기반 주식 분석 전문가입니다. 입력으로 주어지는 JSON 형식의 뉴스 데이터를 분석하여, JSON 형식으로 종합적인 분석 결과를 도출해 주세요.
 
+    [응답 형식 검증]
+    응답은 반드시 다음 9개의 필드를 모두 포함해야 합니다:
+    1. stock_id: 종목 번호 (필수)
+    2. stock_name: 종목 이름 (필수)
+    3. link: 기사 링크들 (필수)
+    4. title: 요약 제목 (필수)
+    5. summary: 뉴스 영향 요약, 15자 이내 (필수)
+    6. positive_content: 긍정적 영향 상세 내용 (필수)
+    7. negative_content: 부정적 영향 상세 내용 (필수)
+    8. positive_content_summary: 긍정적 영향 요약, 15자 이내 (필수)
+    9. negative_content_summary: 부정적 영향 요약, 15자 이내 (필수)
+    
     [입력 형식]
     {
       "stock_name": "종목 이름",
@@ -172,7 +184,17 @@ export class NewsSummaryService {
       "negative_content": "해당사항 없음"
       "positive_content_summary": "자사주 매입으로 인한 주가 상승 예상",
       "negative_content_summary": "해당사항 없음"
-    }`;
+    }
+    
+    [중요]
+    - 모든 필드는 필수이며 생략할 수 없습니다
+    - 응답 위에 다른 객체로 감싸지 않아야 합니다
+    - 형식이 맞지 않으면 시스템 오류가 발생합니다
+    - "해당사항 없음"의 경우에도 명시적으로 작성해야 합니다\`;
+    - summary는 단순 사실이나 예측이 아닌, 명확한 인과관계를 보여야 합니다.\`;
+      * 금지 예시 : 주가 상승(x)
+      * 올바른 예시 : 자사주 매입으로 인한 주가 상승 예상(o)\
+    `;
   }
 
   private getParameters() {
