@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { Logger } from 'winston';
+import { Injectable } from '@nestjs/common';
 import { OpenapiTokenApi } from '@/scraper/openapi/api/openapiToken.api';
 import { TR_ID } from '@/scraper/openapi/type/openapiUtil.type';
 import { getOpenApi } from '@/scraper/openapi/util/openapiUtil.api';
 import { PriorityQueue } from '@/scraper/openapi/util/priorityQueue';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 export interface Json {
   output: Record<string, string> | Record<string, string>[];
@@ -42,13 +42,14 @@ export class OpenapiQueue {
 @Injectable()
 export class OpenapiConsumer {
   private readonly REQUEST_COUNT_PER_SECOND = 20;
+  private readonly context = 'OpenapiConsumer';
   private isProcessing: boolean = false;
   private currentTokenIndex = 0;
 
   constructor(
     private readonly queue: OpenapiQueue,
     private readonly openapiTokenApi: OpenapiTokenApi,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {
     this.start();
   }
@@ -101,11 +102,15 @@ export class OpenapiConsumer {
       );
       await node.callback(data);
     } catch (error) {
+      this.customLogger.warn('OpenAPI process request failed', this.context);
       if (node.count === undefined || node.count! <= 0) {
-        this.logger.error(error);
+        this.customLogger.error(`OpenAPI queue error - URL:${node.url}, trId: ${node.trId}`, this.context);
+        this.customLogger.error('Error details', error, this.context);
         return;
       }
-      this.logger.warn(error);
+      this.customLogger.warn(`OpenAPI queue warning - URL:${node.url}, trId: ${node.trId}`, error, this.context);
+      this.customLogger.warn('Warning details', error, this.context);
+      this.customLogger.warn(`Retries left: ${node.count}`, this.context);
       node.count -= 1;
       this.queue.enqueue(node, 1);
     }
