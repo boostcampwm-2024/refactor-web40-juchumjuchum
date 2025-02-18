@@ -1,6 +1,5 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import * as dotenv from 'dotenv';
-import { CustomQueryLogger } from '@/configs/customQueryLogger';
 
 dotenv.config();
 
@@ -24,4 +23,7 @@ export const typeormDevelopConfig: TypeOrmModuleOptions = {
   entities: [__dirname + '/../**/*.entity.{js,ts}'],
   // logging: true,
   synchronize: true,
+  extra: {
+    connectionLimit: 30,
+  },
 };
