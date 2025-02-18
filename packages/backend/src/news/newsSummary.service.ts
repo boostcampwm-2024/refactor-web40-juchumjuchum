@@ -140,7 +140,11 @@ export class NewsSummaryService {
     
     2. **종합 분석:**
        - title: 전체 뉴스 내용을 관통하는 핵심 주제나 이슈를 간단한 제목으로 작성
-       - summary: 모든 뉴스 기사의 주요 내용을 종합적으로 요약하여 작성
+       - positive_content_summary: 뉴스가 주가에 미칠 긍정적 영향을 15자 이내로 작성
+       - negative_content_summary: 뉴스가 주가에 미칠 부정적 영향을 15자 이내로 작성
+         * 형식: "핵심내용 으로 인한 주가방향"
+         * 예시: "자사주 매입으로 인한 주가 상승 예상"
+         * 예시: "일론 머스크 CEO 사임으로 주가 하락 예상"
     
     3. **영향 분석:**
        - positive_content: 기업, 산업, 경제에 긍정적 영향을 줄 수 있는 요소들을 분석하여 작성
@@ -155,6 +159,7 @@ export class NewsSummaryService {
     6. JSON 응답 전후에 어떠한 설명이나 부가 텍스트를 추가하지 않습니다.
     7. JSON의 각 필드는 큰따옴표(")로 묶어야 합니다.
     8. 응답은 단일 JSON 객체여야 하며, 최상위 레벨에 다른 텍스트가 있으면 안 됩니다.
+    9. positive_content_summary 와 negative_content_summary 내용이 없는 경우 "해당사항 없음"으로 작성합니다.
     
     [응답 예시]
     {
@@ -165,6 +170,8 @@ export class NewsSummaryService {
       "summary": "실적 내용 요약...",
       "positive_content": "긍정적 내용...",
       "negative_content": "해당사항 없음"
+      "positive_content_summary": "자사주 매입으로 인한 주가 상승 예상",
+      "negative_content_summary": "해당사항 없음"
     }`;
   }
 

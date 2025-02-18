@@ -79,8 +79,10 @@ export class StockNewsOrchestrationService {
         stock_name: stock.name,
       };
 
-      await this.stockNewsRepository.create(finalSummarizedData);
-      this.logger.info(`Successfully saved news for ${stock.name}`);
+      console.log(finalSummarizedData);
+
+      // await this.stockNewsRepository.create(finalSummarizedData);
+      // this.logger.info(`Successfully saved news for ${stock.name}`);
       return { success: true, stock };
       
     } catch (error) {
