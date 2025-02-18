@@ -10,10 +10,6 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [news, setNews] = useState<any[]>([]);
-  const [latestSummary, setLatestSummary] = useState<{
-    positive_content_summary: string | null;
-    negative_content_summary: string | null;
-  } | null>(null);
 
   const handleClick = async () => {
     try {
@@ -21,14 +17,6 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
       const response = await fetch(`${BASE_URL}/api/stock/news/${stockId}`);
       const data = await response.json();
       setNews(data);
-      
-      // 최신 뉴스의 요약 정보 저장
-      if (data.length > 0) {
-        setLatestSummary({
-          positive_content_summary: data[0].positiveContentSummary,
-          negative_content_summary: data[0].negativeContentSummary,
-        });
-      }
     } catch (error) {
       console.error('뉴스를 불러오는데 실패했습니다:', error);
     }
@@ -51,23 +39,6 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
         </svg>
         AI 뉴스 보기
       </button>
-
-      {latestSummary && (
-        <div className="text-sm space-y-2">
-          {latestSummary.positive_content_summary && latestSummary.positive_content_summary !== '해당사항 없음' && (
-            <div>
-              <span className="font-semibold text-red-600">호재</span>
-              <span className="text-dark-gray">: {latestSummary.positive_content_summary}</span>
-            </div>
-          )}
-          {latestSummary.negative_content_summary && latestSummary.negative_content_summary !== '해당사항 없음' && (
-            <div>
-              <span className="font-semibold text-blue-600">악재</span>
-              <span className="text-dark-gray">: {latestSummary.negative_content_summary}</span>
-            </div>
-          )}
-        </div>
-      )}
 
       {isOpen && (
         <div 
