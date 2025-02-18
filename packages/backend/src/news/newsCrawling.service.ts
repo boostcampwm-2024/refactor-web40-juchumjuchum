@@ -10,13 +10,13 @@ import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 export class NewsCrawlingService {
   private readonly MAX_NEWS_COUNT = 5;
 
-  constructor(@Inject('winston') private readonly logger: Logger) {
-  }
+  constructor(@Inject('winston') private readonly logger: Logger) {}
 
   private readonly category = {
     ECONOMICS: '경제',
     WORLD: '세계',
     IT: 'IT/과학',
+    POLITICS: '정치',
   };
 
   // naver news API 이용해 뉴스 정보 얻어오기
@@ -104,7 +104,7 @@ export class NewsCrawlingService {
     );
   }
 
-  changeToKorTime() {
+  getCurrentKorTime() {
     const now = new Date();
     const utc = now.getTime() + now.getTimezoneOffset() * 60000;
     return new Date(utc + 9 * 60 * 60000);
@@ -112,7 +112,7 @@ export class NewsCrawlingService {
 
   isSameDate(date: string) {
     const parsedDate = new Date(date);
-    const now = this.changeToKorTime();
+    const now = this.getCurrentKorTime();
     return (
       parsedDate.getFullYear() === now.getFullYear() &&
       parsedDate.getMonth() === now.getMonth() &&
