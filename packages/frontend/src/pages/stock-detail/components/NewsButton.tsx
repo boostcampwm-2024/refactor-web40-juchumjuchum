@@ -10,6 +10,10 @@ const BASE_URL = import.meta.env.VITE_BASE_URL;
 export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [news, setNews] = useState<any[]>([]);
+  const [latestSummary, setLatestSummary] = useState<{
+    positive_content_summary: string | null;
+    negative_content_summary: string | null;
+  } | null>(null);
 
   const handleClick = async () => {
     try {
@@ -17,6 +21,14 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
       const response = await fetch(`${BASE_URL}/api/stock/news/${stockId}`);
       const data = await response.json();
       setNews(data);
+      
+      // 최신 뉴스의 요약 정보 저장
+      if (data.length > 0) {
+        setLatestSummary({
+          positive_content_summary: data[0].positiveContentSummary,
+          negative_content_summary: data[0].negativeContentSummary,
+        });
+      }
     } catch (error) {
       console.error('뉴스를 불러오는데 실패했습니다:', error);
     }
@@ -29,41 +41,33 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
   };
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       <button 
         onClick={handleClick}
-        className="
-          px-4 py-2 
-          border border-gray-300
-          bg-white
-          hover:bg-gray-50
-          text-gray-700 
-          font-semibold
-          rounded-md 
-          shadow-sm
-          transition-all 
-          duration-200
-          flex items-center 
-          gap-2
-          hover:shadow-md
-          active:scale-95
-        "
+        className="px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-md shadow-sm transition-all duration-200 flex items-center gap-2 hover:shadow-md active:scale-95"
       >
-        <svg 
-          className="w-4 h-4" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2}
-            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
-          />
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
         </svg>
         AI 뉴스 보기
       </button>
+
+      {latestSummary && (
+        <div className="text-sm space-y-2">
+          {latestSummary.positive_content_summary && latestSummary.positive_content_summary !== '해당사항 없음' && (
+            <div>
+              <span className="font-semibold text-red-600">호재</span>
+              <span className="text-dark-gray">: {latestSummary.positive_content_summary}</span>
+            </div>
+          )}
+          {latestSummary.negative_content_summary && latestSummary.negative_content_summary !== '해당사항 없음' && (
+            <div>
+              <span className="font-semibold text-blue-600">악재</span>
+              <span className="text-dark-gray">: {latestSummary.negative_content_summary}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {isOpen && (
         <div 

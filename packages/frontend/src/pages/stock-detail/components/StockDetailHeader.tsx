@@ -12,6 +12,7 @@ import { UserStatus } from '@/constants/chatStatus';
 import { modalMessage, ModalMessage } from '@/constants/modalMessage';
 import { LoginContext } from '@/contexts/login';
 import { NewsButton } from './NewsButton';
+import { NewsSummary } from '@/components/NewsSummary';
 
 interface StockDetailHeaderProps {
   stockId: string;
@@ -32,6 +33,10 @@ export const StockDetailHeader = ({
   const [userStatus, setUserStatus] = useState<ModalMessage>(
     UserStatus.NOT_AUTHENTICATED,
   );
+  const [latestNews, setLatestNews] = useState<{
+    positive_content_summary: string | null;
+    negative_content_summary: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -43,6 +48,25 @@ export const StockDetailHeader = ({
       return isOwnerStock ? UserStatus.OWNERSHIP : UserStatus.NOT_OWNERSHIP;
     });
   }, [isOwnerStock, isLoggedIn]);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_BASE_URL}/api/stock/news/${stockId}`);
+        const data = await response.json();
+        if (data.length > 0) {
+          setLatestNews({
+            positive_content_summary: data[0].positiveContentSummary === '해당사항 없음' ? null : data[0].positiveContentSummary,
+            negative_content_summary: data[0].negativeContentSummary === '해당사항 없음' ? null : data[0].negativeContentSummary,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch news:', error);
+      }
+    };
+    
+    fetchNews();
+  }, [stockId]);
 
   const { mutate: postStockUser } = usePostStockUser({
     onSuccess: () => {
@@ -69,17 +93,20 @@ export const StockDetailHeader = ({
   };
 
   return (
-    <header className="flex items-center gap-4">
-      <h1 className="display-bold24">{stockName}</h1>
-      <NewsButton stockId={stockId} stockName={stockName} />
-      <Button
-        className="flex items-center justify-center gap-1"
-        onClick={() => {
-          setShowModal(true);
-        }}
-      >
-        {modalMessage[userStatus].label}
-      </Button>
+    <header className="flex flex-col gap-4">
+      <div className="flex items-center gap-4">
+        <h1 className="display-bold24">{stockName}</h1>
+        <NewsButton stockId={stockId} stockName={stockName} />
+        <Button
+          className="flex items-center justify-center gap-1"
+          onClick={() => {
+            setShowModal(true);
+          }}
+        >
+          {modalMessage[userStatus].label}
+        </Button>
+      </div>
+      {latestNews && <NewsSummary {...latestNews} />}
       {showModal &&
         createPortal(
           <Modal
