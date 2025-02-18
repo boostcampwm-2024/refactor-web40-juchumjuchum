@@ -3,9 +3,11 @@ import * as DailyRotateFile from 'winston-daily-rotate-file';
 
 const { combine, timestamp, printf } = format;
 
-const logFormat = printf(({ level, message, timestamp, context }) => {
-  return `[${timestamp}][${level}]${context ? `[${context}]` : ''}: ${message}`;
-});
+const logFormat = printf(
+  ({ level, message, timestamp, context, connectionInfo }) => {
+    return `[${timestamp}][${level}]${context ? `[${context}]` : ''}: ${message} ${connectionInfo ?? ''}`;
+  },
+);
 
 export const logger = createLogger({
   format: combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }), logFormat),
@@ -37,10 +39,7 @@ export const logger = createLogger({
 
     // Console transport 추가
     new transports.Console({
-      format: combine(
-        format.colorize(),
-        logFormat
-      )
+      format: combine(format.colorize(), logFormat),
     }),
   ],
 });

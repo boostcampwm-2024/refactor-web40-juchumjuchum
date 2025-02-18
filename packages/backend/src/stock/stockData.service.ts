@@ -22,6 +22,7 @@ import { NewDate } from '@/scraper/openapi/util/newDate.util';
 import { StockDataCache } from '@/stock/cache/stockData.cache';
 import { StockLiveData } from '@/stock/domain/stockLiveData.entity';
 import { getFormattedDate, isTodayWeekend } from '@/utils/date';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 type StockData = {
   id: number;
@@ -38,11 +39,13 @@ type StockData = {
 @Injectable()
 export class StockDataService {
   protected readonly PAGE_SIZE = 100;
+  private readonly context = 'StockDataService';
 
   constructor(
     private readonly dataSource: DataSource,
     private readonly stockDataCache: StockDataCache,
     private readonly openapiPeriodData: OpenapiPeriodData,
+    private readonly customLogger: CustomLogger,
   ) {}
 
   async scrollChart(
@@ -86,6 +89,7 @@ export class StockDataService {
   }
 
   private async isStockExist(stockId: string, manager: EntityManager) {
+    this.customLogger.info(`check stock exist for stock: ${stockId}`, this.context);
     return await manager.exists(Stock, { where: { id: stockId } });
   }
 
@@ -94,6 +98,7 @@ export class StockDataService {
     stockId: string,
     lastStartTime?: string,
   ) {
+    this.customLogger.info(`get chart data for stock: ${stockId}`, this.context);
     const lastData = await this.findLastData(entity, stockId);
     const periodType = this.getPeriodType(entity);
     if (!periodType) throw new BadRequestException('period type not found');
@@ -126,6 +131,7 @@ export class StockDataService {
     entity: new () => StockData,
     stockId: string,
   ) {
+    this.customLogger.info(`renew chart data for stock: ${stockId}`, this.context);
     const liveData = await this.dataSource.manager.findOne(StockLiveData, {
       where: { stock: { id: stockId } },
     });
@@ -140,6 +146,7 @@ export class StockDataService {
     stockId: string,
     lastStartTime?: string,
   ) {
+    this.customLogger.info(`get chart data from db for stock: ${stockId}`, this.context);
     const queryBuilder = this.createQueryBuilder(
       entity,
       stockId,

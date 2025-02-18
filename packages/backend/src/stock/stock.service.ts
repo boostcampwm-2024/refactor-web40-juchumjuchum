@@ -1,6 +1,5 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { Logger } from 'winston';
 import {
   StockRankResponses,
   StockSearchResponse,
@@ -10,29 +9,35 @@ import { UserStock } from '@/stock/domain/userStock.entity';
 import { UserStocksResponse } from '@/stock/dto/userStock.response';
 import { StockRepository } from '@/stock/repository/stock.repository';
 import { UserStockRepository } from '@/stock/repository/userStock.repository';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @Injectable()
 export class StockService {
+  private readonly context = 'StockService';
+
   constructor(
     private readonly stockRepository: StockRepository,
     private readonly userStockRepository: UserStockRepository,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {}
 
   async increaseView(stockId: string) {
+    this.customLogger.info(`increase view for stock: ${stockId}`, this.context);
     const isExists = await this.stockRepository.existsById(stockId);
     if (!isExists) {
-      this.logger.warn(`stock not found: ${stockId}`);
+      this.customLogger.warn(`stock not found: ${stockId}`, this.context);
       throw new BadRequestException('stock not found');
     }
     return this.stockRepository.increaseView(stockId);
   }
 
   checkStockExist(stockId: string) {
+    this.customLogger.info(`check stock exist for stock: ${stockId}`, this.context);
     return this.stockRepository.existsById(stockId);
   }
 
   async searchStock(stockName: string) {
+    this.customLogger.info(`search stock by name: ${stockName}`, this.context);
     const result = await this.stockRepository.findByName(stockName);
     return new StockSearchResponse(result);
   }
@@ -53,21 +58,25 @@ export class StockService {
   }
 
   async getTopStocksByViews(limit: number) {
+    this.customLogger.info(`get top stocks by views`, this.context);
     const rawData = await this.stockRepository.findByTopViews(limit);
     return plainToInstance(StocksResponse, rawData);
   }
 
   async getTopStocksByGainers(limit: number) {
+    this.customLogger.info(`get top stocks by gainers`, this.context);
     const rawData = await this.stockRepository.findByTopGainers(limit);
     return new StockRankResponses(rawData);
   }
 
   async getTopStocksByLosers(limit: number) {
+    this.customLogger.info(`get top stocks by losers`, this.context);
     const rawData = await this.stockRepository.findByTopLosers(limit);
     return new StockRankResponses(rawData);
   }
 
   async getTopStocksByMarketCap(limit: number) {
+    this.customLogger.info(`get top stocks by market cap`, this.context);
     const rawData = await this.stockRepository.findByTopMarketCap(limit);
     return plainToInstance(StocksResponse, rawData);
   }
@@ -86,12 +95,14 @@ export class StockService {
   }
 
   async createUserStock(userId: number, stockId: string) {
+    this.customLogger.info(`create user stock for user: ${userId}, stock: ${stockId}`, this.context);
     await this.validateStockExists(stockId);
     await this.validateDuplicateUserStock(stockId, userId);
     return this.userStockRepository.create(userId, stockId);
   }
   
   async isUserStockOwner(stockId: string, userId?: number) {
+    this.customLogger.info(`check user stock owner for user: ${userId}, stock: ${stockId}`, this.context);
     if (!userId) {
       return false;
     }
@@ -99,6 +110,7 @@ export class StockService {
   }
 
   async getUserStocks(userId?: number) {
+    this.customLogger.info(`get user stocks for user: ${userId}`, this.context);
     if (!userId) {
       return new UserStocksResponse([]);
     }
@@ -107,6 +119,7 @@ export class StockService {
   }
 
   async deleteUserStock(userId: number, stockId: string) {
+    this.customLogger.info(`delete user stock for user: ${userId}, stock: ${stockId}`, this.context);
     const userStock = await this.userStockRepository.findByUserIdAndStockId(
       userId,
       stockId,
@@ -132,6 +145,4 @@ export class StockService {
       throw new BadRequestException('user stock already exists');
     }
   }
-
-
 }
