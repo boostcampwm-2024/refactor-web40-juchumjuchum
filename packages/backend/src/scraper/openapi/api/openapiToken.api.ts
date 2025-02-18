@@ -43,7 +43,6 @@ export class OpenapiTokenApi {
 
   @Cron('30 0 * * *')
   async init() {
-    this.customLogger.info('Initialize OpenAPI token', this.context);
     const expired_config = this.config.filter(
       (val) =>
         this.isTokenExpired(val.STOCK_API_TIMEOUT) &&
@@ -51,6 +50,8 @@ export class OpenapiTokenApi {
     );
     const isUndefined = this.config[0].STOCK_WEBSOCKET_TIMEOUT ? false : true;
     if (!isUndefined && !expired_config.length) return;
+
+    this.customLogger.info('Initialize OpenAPI token', this.context);
     const tokens = this.convertConfigToTokenEntity(this.config);
     const config = await this.getPropertyFromDB(tokens);
     const expired = config.filter(
