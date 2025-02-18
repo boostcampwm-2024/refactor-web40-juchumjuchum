@@ -45,6 +45,8 @@ const NewsItemSchema = z.object({
   link: z.string(),
   negativeContent: z.string(),
   positiveContent: z.string(),
+  negativeContentSummary: z.string(),
+  positiveContentSummary: z.string(),
   stockId: z.string(),
   stockName: z.string(),
   summary: z.string(),
@@ -59,6 +61,8 @@ const getStockNews = (stockId: string) =>
     link: string;
     negativeContent: string;
     positiveContent: string;
+    negativeContentSummary: string;
+    positiveContentSummary: string;
     stockId: string;
     stockName: string;
     summary: string;
@@ -91,8 +95,8 @@ export const useStockQueries = ({ viewsLimit }: StockQueriesProps) => {
                 return {
                   ...stock,
                   news: {
-                    positive_content: latestNews?.positiveContent === '해당사항 없음' ? null : latestNews?.positiveContent,
-                    negative_content: latestNews?.negativeContent === '해당사항 없음' ? null : latestNews?.negativeContent,
+                    positive_content_summary: latestNews?.positiveContentSummary === '해당사항 없음' ? null : latestNews?.positiveContentSummary,
+                    negative_content_summary: latestNews?.negativeContentSummary === '해당사항 없음' ? null : latestNews?.negativeContentSummary,
                   },
                 };
               } catch (error) {
@@ -100,8 +104,8 @@ export const useStockQueries = ({ viewsLimit }: StockQueriesProps) => {
                 return {
                   ...stock,
                   news: {
-                    positive_content: null,
-                    negative_content: null,
+                    positive_content_summary: null,
+                    negative_content_summary: null,
                   },
                 };
               }

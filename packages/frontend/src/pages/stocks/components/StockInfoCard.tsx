@@ -6,8 +6,8 @@ interface StockInfoCardProps {
   currentPrice?: number;
   changeRate?: number;
   news?: {
-    positive_content: string | null;
-    negative_content: string | null;
+    positive_content_summary: string | null;
+    negative_content_summary: string | null;
   };
   onClick?: () => void;
 }
@@ -54,11 +54,11 @@ export const StockInfoCard = ({
         <section className="mt-2 text-sm">
           <div className="text-green-600">
             <span className="font-semibold">호재:</span>{' '}
-            {news.positive_content || '해당사항 없음'}
+            {news.positive_content_summary || '해당사항 없음'}
           </div>
           <div className="text-red-600">
             <span className="font-semibold">악재:</span>{' '}
-            {news.negative_content || '해당사항 없음'}
+            {news.negative_content_summary || '해당사항 없음'}
           </div>
         </section>
       )}
