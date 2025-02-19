@@ -6,8 +6,8 @@ interface StockInfoCardProps {
   currentPrice?: number;
   changeRate?: number;
   news?: {
-    positive_content: string | null;
-    negative_content: string | null;
+    positive_content_summary: string | null;
+    negative_content_summary: string | null;
   };
   onClick?: () => void;
 }
@@ -52,14 +52,30 @@ export const StockInfoCard = ({
       </section>
       {news && (
         <section className="mt-2 text-sm">
-          <div className="text-green-600">
-            <span className="font-semibold">호재:</span>{' '}
-            {news.positive_content || '해당사항 없음'}
+
+          {/* AI Beta 배지 */}
+          <div className="mb-2">
+          <span className="inline-flex items-center rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 px-3 py-1 text-sm font-bold text-green shadow-md">
+            <span className="mr-1 text-lg">⚡</span> AI Beta
+          </span>
           </div>
-          <div className="text-red-600">
-            <span className="font-semibold">악재:</span>{' '}
-            {news.negative_content || '해당사항 없음'}
-          </div>
+
+
+          {/* 호재가 있는 경우에만 렌더링 */}
+          {news.positive_content_summary && news.positive_content_summary !== '해당사항 없음' && (
+            <div className="text-dark-gray">
+              <span className="font-semibold" style={{ color: '#dc2626' }}>호재:</span>{' '}
+              {news.positive_content_summary}
+            </div>
+          )}
+
+          {/* 악재가 있는 경우에만 렌더링 */}
+          {news.negative_content_summary && news.negative_content_summary !== '해당사항 없음' && (
+            <div className="text-blue-600">
+              <span className="font-semibold" style={{ color: '#2563eb' }}>악재:</span>{' '}
+              {news.negative_content_summary}
+            </div>
+          )}
         </section>
       )}
     </div>
