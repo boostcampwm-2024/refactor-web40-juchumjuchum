@@ -244,7 +244,6 @@ export class NewsSummaryService {
 
   async compare(content: string, stockId: string) {
     const latestNewsContent = await this.getLatestNewSummary(stockId);
-    console.log(latestNewsContent)
     const extractor = await this.transformers.pipeline(
       'feature-extraction',
       'Xenova/all-MiniLM-L6-v2',
@@ -259,11 +258,12 @@ export class NewsSummaryService {
       pooling: 'mean',
       normalize: true,
     });
-    console.log('summaryResponse');
-    console.log(summaryResponse);
-    console.log('latestSummaryResponse');
-    console.log(latestSummaryResponse);
 
+
+    return await this.cos_sim(
+      Array.from(summaryResponse.data),
+      Array.from(latestSummaryResponse.data),
+    );
   }
 
   private async initializeTransformer() {
@@ -279,6 +279,22 @@ export class NewsSummaryService {
       throw err;
     }
   }
+
+  async cos_sim(vector1: number[], vector2: number[]) {
+    if (vector1.length !== vector2.length) {
+      throw new Error('Vector haven\'t same length');
+    }
+
+    const dotProduct = vector1.reduce((sum, val, idx) => sum + val * vector2[idx], 0);
+    console.log(vector1);
+    console.log(vector2);
+    const size1 = vector1.reduce((sum, val) => sum + val * val, 0.0);
+    const size2 = vector2.reduce((sum, val) => sum + val * val, 0.0);
+
+    return size1 && size2 ? dotProduct / (size1 * size2) : 0.0;
+  }
+
+
 }
 
 
