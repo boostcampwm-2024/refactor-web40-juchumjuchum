@@ -11,6 +11,9 @@ export const typeormProductConfig: TypeOrmModuleOptions = {
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
   entities: [__dirname + '/../**/*.entity.{js,ts}'],
+  extra: {
+    connectionLimit: 30,
+  },
 };
 
 export const typeormDevelopConfig: TypeOrmModuleOptions = {
