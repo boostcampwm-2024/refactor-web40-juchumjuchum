@@ -152,6 +152,7 @@ export class NewsSummaryService {
     
     2. **종합 분석:**
        - title: 전체 뉴스 내용을 관통하는 핵심 주제나 이슈를 간단한 제목으로 작성
+       - summary: 모든 뉴스 기사의 주요 내용을 종합적으로 요약하여 작성
        - positive_content_summary: 뉴스가 주가에 미칠 긍정적 영향을 15자 이내로 작성
        - negative_content_summary: 뉴스가 주가에 미칠 부정적 영향을 15자 이내로 작성
          * 형식: "핵심내용 으로 인한 주가방향"
