@@ -289,8 +289,8 @@ export class NewsSummaryService {
       (sum, val, idx) => sum + val * vector2[idx],
       0,
     );
-    const size1 = vector1.reduce((sum, val) => sum + val * val, 0.0);
-    const size2 = vector2.reduce((sum, val) => sum + val * val, 0.0);
+    const size1 = Math.sqrt(vector1.reduce((sum, val) => sum + val * val, 0.0));
+    const size2 = Math.sqrt(vector2.reduce((sum, val) => sum + val * val, 0.0));
 
     return size1 && size2 ? dotProduct / (size1 * size2) : 0.0;
   }
