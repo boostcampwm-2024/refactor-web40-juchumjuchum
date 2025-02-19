@@ -96,7 +96,7 @@ export const StockDetailHeader = ({
     <header className="flex flex-col gap-4">
       <div className="flex items-center gap-4">
         <h1 className="display-bold24">{stockName}</h1>
-        <NewsButton stockId={stockId} stockName={stockName} />
+        {latestNews && <NewsButton stockId={stockId} stockName={stockName} />}
         <Button
           className="flex items-center justify-center gap-1"
           onClick={() => {
