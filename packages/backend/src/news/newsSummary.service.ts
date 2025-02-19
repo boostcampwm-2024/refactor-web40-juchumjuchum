@@ -12,6 +12,7 @@ import {
   TokenAPIException,
 } from './error/newsSummary.error';
 import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
+import { StockNewsRepository } from '@/news/stockNews.repository';
 
 @Injectable()
 export class NewsSummaryService {
@@ -20,10 +21,11 @@ export class NewsSummaryService {
   private readonly CLOVA_TOKEN_URL =
     'https://clovastudio.stream.ntruss.com/v1/api-tools/chat-tokenize/HCX-003';
   private readonly CLOVA_API_KEY = process.env.CLOVA_API_KEY;
-  private pipeline: never;
+  private transformers: any;
 
-  constructor(@Inject('winston') private readonly logger: Logger) {
-    this.initializeTransformer().then((r) => console.log(r));
+  constructor(@Inject('winston') private readonly logger: Logger,
+              private readonly stockNewsRepository: StockNewsRepository) {
+    this.initializeTransformer().then(() => this.transformers);
   }
 
   async summarizeNews(stockNewsData: CrawlingDataDto) {
@@ -234,18 +236,43 @@ export class NewsSummaryService {
     }, {});
   }
 
-  async compare() {
-    console.log(this.pipeline);
+  async getLatestNewSummary(stockId: string) {
+    const latestNews =
+      await this.stockNewsRepository.findLatestByStockId(stockId);
+    return latestNews?.summary;
+  }
+
+  async compare(content: string, stockId: string) {
+    const latestNewsContent = await this.getLatestNewSummary(stockId);
+    console.log(latestNewsContent)
+    const extractor = await this.transformers.pipeline(
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+    );
+
+    const summaryResponse = await extractor([content], {
+      pooling: 'mean',
+      normalize: true,
+    });
+
+    const latestSummaryResponse = await extractor([latestNewsContent], {
+      pooling: 'mean',
+      normalize: true,
+    });
+    console.log('summaryResponse');
+    console.log(summaryResponse);
+    console.log('latestSummaryResponse');
+    console.log(latestSummaryResponse);
+
   }
 
   private async initializeTransformer() {
     try {
-      if (!this.pipeline) {
-        const transformers = (await dynamicImport(
+      if (!this.transformers) {
+        this.transformers = (await dynamicImport(
           '@xenova/transformers',
           module,
         )) as typeof import('@xenova/transformers');
-        return transformers.pipeline;
       }
     } catch (err) {
       this.logger.error('Failed to initialize transformer:', err);
