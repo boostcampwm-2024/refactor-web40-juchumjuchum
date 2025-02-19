@@ -10,13 +10,15 @@ import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 export class NewsCrawlingService {
   private readonly MAX_NEWS_COUNT = 5;
 
-  constructor(@Inject('winston') private readonly logger: Logger) {}
+  constructor(@Inject('winston') private readonly logger: Logger) {
+  }
 
   private readonly category = {
     ECONOMICS: '경제',
     WORLD: '세계',
     IT: 'IT/과학',
     POLITICS: '정치',
+    SOCIETY: '사회',
   };
 
   // naver news API 이용해 뉴스 정보 얻어오기
@@ -53,6 +55,7 @@ export class NewsCrawlingService {
   async crawling(stock: string, news: NewsItemDto[]) {
     const crawledNews = await Promise.all(
       news.map(async (n) => {
+
         const url = decodeURI(n.link);
         return await axios(url, {
           method: 'GET',
@@ -100,7 +103,9 @@ export class NewsCrawlingService {
     return (
       category !== this.category.ECONOMICS &&
       category !== this.category.IT &&
-      category !== this.category.WORLD
+      category !== this.category.WORLD &&
+      category !== this.category.SOCIETY &&
+      category !== this.category.POLITICS
     );
   }
 
