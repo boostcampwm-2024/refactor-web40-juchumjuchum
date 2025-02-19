@@ -23,6 +23,8 @@ const config: Config = {
       red: 'var(--red)',
       green: 'var(--green)',
       blue: 'var(--blue)',
+      'positive-red': 'var(--positive-red)',
+      'negative-blue': 'var(--negative-blue)',
     },
   },
   plugins: [],

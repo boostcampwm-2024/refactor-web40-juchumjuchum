@@ -34,6 +34,8 @@
     --red: #ff4d4d;
     --green: #7eeb7e;
     --blue: #1a75ff;
+    --positive-red: #dc2626;
+    --negative-blue: #2563eb;
   }
 
   .dark {
@@ -49,6 +51,8 @@
     --red: #ff6b6b;
     --green: #4caf50;
     --blue: #4d9eff;
+    --positive-red: #ef4444;
+    --negative-blue: #3b82f6;
   }
 }
 
@@ -87,6 +91,10 @@
 
   .display-medium12 {
     @apply text-xs;
+  }
+
+  .link-primary {
+    @apply text-[#4c5cbb] transition-colors visited:text-[#2d3a8c] hover:text-[#3b4ba8];
   }
 }
 
