@@ -16,6 +16,10 @@ export const GetStockSchema = z.object({
   marketCap: z.string().nullable(), // 문자열이면서 null 허용,
   rank: z.number(),
   isRising: z.boolean(),
+  news: z.object({
+    positive_content_summary: z.string().nullable(),
+    negative_content_summary: z.string().nullable(),
+  }).optional(),
 });
 
 export const GetStockListResponseSchema = z.object({
