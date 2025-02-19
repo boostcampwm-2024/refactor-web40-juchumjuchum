@@ -51,7 +51,7 @@
     --red: #ff6b6b;
     --green: #4caf50;
     --blue: #4d9eff;
-    --positive-red: #ef4444;
+    --positive-red: #c93f3f;
     --negative-blue: #3b82f6;
   }
 }
@@ -94,7 +94,11 @@
   }
 
   .link-primary {
-    @apply text-[#4c5cbb] transition-colors visited:text-[#2d3a8c] hover:text-[#3b4ba8];
+    @apply text-[#4c5cbb] text-sm transition-colors visited:text-[#2d3a8c] hover:text-[#3b4ba8];
+  }
+
+  .badge-ai-beta {
+    @apply inline-flex items-center text-sm text-[#22c55e] border-b border-[#64748b]/20 gap-1 pb-0.5;
   }
 }
 
