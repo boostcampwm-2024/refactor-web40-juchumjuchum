@@ -3,23 +3,25 @@ import * as fs from 'fs';
 import * as https from 'https';
 import * as path from 'path';
 import * as readline from 'readline';
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { config as dotenvConfig } from 'dotenv';
 import * as iconv from 'iconv-lite';
 import { DataSource, EntityManager } from 'typeorm';
 import * as unzipper from 'unzipper';
-import { Logger } from 'winston';
 import { MasterDownloadDto } from './dto/master-download.dto';
 import { Stock } from '@/stock/domain/stock.entity';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 dotenvConfig();
 
 @Injectable()
 export class KoreaStockInfoService {
+  private readonly context = 'KoreaStockInfoService';
+
   constructor(
     private readonly datasource: DataSource,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {
     this.initKoreaStockInfo();
   }
@@ -41,38 +43,34 @@ export class KoreaStockInfoService {
   }
 
   private async insertStockDataBatch(stocks: Stock[]): Promise<void> {
-
     if (stocks.length === 0) return;
 
     const manager = this.datasource.manager;
 
     // 한 번의 쿼리로 모든 기존 stock_id 조회
+    this.customLogger.info(`Get ${stocks.length} stocks from DB`, this.context);
     const existingStocks = await manager
-      .createQueryBuilder(Stock, "stock")
-      .select("stock.id")
-      .where("stock.id IN (:...ids)", {
-        ids: stocks.map(s => s.id)
+      .createQueryBuilder(Stock, 'stock')
+      .select('stock.id')
+      .where('stock.id IN (:...ids)', {
+        ids: stocks.map((s) => s.id),
       })
       .getRawMany();
 
-    const existingIds = new Set(existingStocks.map(s => s.id));
+    const existingIds = new Set(existingStocks.map((s) => s.id));
 
     // 존재하지 않는 stocks만 필터링
-    const newStocks = stocks.filter(s => !existingIds.has(s.id));
+    const newStocks = stocks.filter((s) => !existingIds.has(s.id));
 
     // 새로운 stocks가 있다면 일괄 저장
     if (newStocks.length > 0) {
       await manager.save(Stock, newStocks);
-      this.logger.info(`Inserted ${newStocks.length} new stocks`);
+      this.customLogger.info(`Inserted ${newStocks.length} new stocks`, this.context);
     }
   }
 
-
-  private async getMasterData(
-    downloadDto: MasterDownloadDto,
-    offset: number,
-  ): Promise<void> {
-    this.logger.info('\n=== 주식 마스터 데이터 처리 시작 ===');
+  private async getMasterData(downloadDto: MasterDownloadDto, offset: number): Promise<void> {
+    this.customLogger.info('\n=== 주식 마스터 데이터 처리 시작 ===');
     const startTime = process.hrtime();
 
     const targetFileName = downloadDto.target + '.mst';
@@ -82,16 +80,11 @@ export class KoreaStockInfoService {
     let queryCount = 0;
     const stocks: Stock[] = [];
 
-
     for await (const row of rl) {
       totalCount++;
       const shortCode = this.getValueFromMst(row, 0, 9);
       const koreanName = this.getValueFromMst(row, 21, row.length - offset);
-      const groupCode = this.getValueFromMst(
-        row,
-        row.length - offset,
-        row.length - offset + 2,
-      );
+      const groupCode = this.getValueFromMst(row, row.length - offset, row.length - offset + 2);
 
       stocks.push({
         id: shortCode,
@@ -100,7 +93,6 @@ export class KoreaStockInfoService {
         isTrading: true,
         groupCode,
       });
-
 
       // 배치 크기가 되면 처리 (메모리 관리를 위해)
       if (stocks.length >= 100) {
@@ -116,12 +108,12 @@ export class KoreaStockInfoService {
     }
 
     const [seconds, nanoseconds] = process.hrtime(startTime);
-    const milliseconds = (seconds * 1000) + (nanoseconds / 1000000);
-    this.logger.info('\n=== 주식 마스터 데이터 처리 완료 ===');
-    this.logger.info(`총 처리된 데이터: ${totalCount}개`);
-    this.logger.info(`실행된 쿼리 수: ${queryCount}개`);
-    this.logger.info(`총 처리 시간: ${milliseconds.toFixed(2)}ms`);
-    this.logger.info('===============================\n');
+    const milliseconds = seconds * 1000 + nanoseconds / 1000000;
+    this.customLogger.info('\n=== 주식 마스터 데이터 처리 완료 ===');
+    this.customLogger.info(`총 처리된 데이터: ${totalCount}개`);
+    this.customLogger.info(`실행된 쿼리 수: ${queryCount}개`);
+    this.customLogger.info(`총 처리 시간: ${milliseconds.toFixed(2)}ms`);
+    this.customLogger.info('\n===============================');
 
     this.handleUnlinkFile(targetFileName);
   }
@@ -131,7 +123,7 @@ export class KoreaStockInfoService {
     const downloadZipFile = target + '.mst.zip';
     const outputFile = target + '.mst';
     const url = process.env.MST_URL + target + '.mst.zip';
-    this.logger.info(`Downloading file from ${url} to ${downloadZipFile}`);
+    this.customLogger.info(`Downloading file from ${url} to ${downloadZipFile}`, this.context);
     const downloadZipFilePath = path.join(baseDir, downloadZipFile);
     const extractedFile = path.join(baseDir, outputFile);
 
@@ -142,24 +134,20 @@ export class KoreaStockInfoService {
         if (err) throw err;
       });
     } catch (error) {
-      this.logger.error('Error during download or extraction:', error);
+      this.customLogger.error('Error during download or extraction:', error, this.context);
     }
 
     return extractedFile;
   }
 
-  public async getKospiMasterData(
-    downloadDto: MasterDownloadDto,
-  ): Promise<void> {
+  public async getKospiMasterData(downloadDto: MasterDownloadDto): Promise<void> {
     await this.getMasterData(downloadDto, 228);
-    this.logger.info('Kospi master data processing done.');
+    this.customLogger.info('Kospi master data processing done.', this.context);
   }
 
-  public async getKosdaqMasterData(
-    downloadDto: MasterDownloadDto,
-  ): Promise<void> {
+  public async getKosdaqMasterData(downloadDto: MasterDownloadDto): Promise<void> {
     await this.getMasterData(downloadDto, 222);
-    this.logger.info('Kosdaq master data processing done.');
+    this.customLogger.info('Kosdaq master data processing done.', this.context);
   }
 
   private async existsStockInfo(stockId: string, manager: EntityManager) {
@@ -179,16 +167,14 @@ export class KoreaStockInfoService {
   }
 
   private async downloadFile(url: string, filePath: string): Promise<void> {
-    this.logger.info(`Starting download from ${url}`);
+    this.customLogger.info(`Starting download from ${url}`, this.context);
     const file = fs.createWriteStream(filePath);
 
     return new Promise((resolve, reject) => {
       https
         .get(url, (response) => {
           if (response.statusCode !== 200) {
-            reject(
-              new Error(`Failed to get '${url}' (${response.statusCode})`),
-            );
+            reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
             return;
           }
 
@@ -196,7 +182,7 @@ export class KoreaStockInfoService {
 
           file.on('finish', () => {
             file.close(() => {
-              this.logger.info('Download completed.');
+              this.customLogger.info('Download completed.', this.context);
               resolve();
             });
           });
@@ -229,14 +215,10 @@ export class KoreaStockInfoService {
     });
   }
 
-  private handleUnlinkFile(
-    targetFileName: string,
-    err?: Error,
-    callback?: (err: Error) => void,
-  ) {
+  private handleUnlinkFile(targetFileName: string, err?: Error, callback?: (err: Error) => void) {
     fs.unlink(targetFileName, (unlinkError) => {
       if (unlinkError) {
-        this.logger.error(`Error deleting file: ${unlinkError.message}`);
+        this.customLogger.error(`Error deleting file: ${unlinkError.message}`, this.context);
       }
       if (callback && err) {
         callback(err);

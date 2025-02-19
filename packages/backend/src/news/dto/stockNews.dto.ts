@@ -24,6 +24,12 @@ export class CreateStockNewsDto {
 
   @IsString()
   negative_content: string;
+
+  @IsString()
+  positive_content_summary: string;
+
+  @IsString()
+  negative_content_summary: string;
 }
 
 export class StockNewsResponse {
@@ -35,6 +41,8 @@ export class StockNewsResponse {
     this.summary = stockNews.summary;
     this.positiveContent = stockNews.positiveContent;
     this.negativeContent = stockNews.negativeContent;
+    this.positiveContentSummary = stockNews.positiveContentSummary;
+    this.negativeContentSummary = stockNews.negativeContentSummary;
     this.createdAt = stockNews.createdAt;
   }
 
@@ -45,5 +53,7 @@ export class StockNewsResponse {
   summary: string;
   positiveContent: string;
   negativeContent: string;
+  positiveContentSummary: string;
+  negativeContentSummary: string;
   createdAt: Date;
 }

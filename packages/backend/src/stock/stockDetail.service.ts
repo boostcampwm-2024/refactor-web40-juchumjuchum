@@ -1,24 +1,27 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { Logger } from 'winston';
 import { StockDetail } from './domain/stockDetail.entity';
 import { StockDetailResponse } from './dto/stockDetail.response';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @Injectable()
 export class StockDetailService {
+  private readonly context = 'StockDetailService';
+
   constructor(
     private readonly datasource: DataSource,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {}
 
   async getStockDetailByStockId(stockId: string): Promise<StockDetailResponse> {
     return await this.datasource.transaction(async (manager) => {
+      this.customLogger.info(`get stock detail by stockId: ${stockId}`, this.context);
       const isExists = await manager.existsBy(StockDetail, {
         stock: { id: stockId },
       });
 
       if (!isExists) {
-        this.logger.warn(`stock detail not found (stockId: ${stockId})`);
+        this.customLogger.warn(`stock detail not found for stock: ${stockId}`, this.context);
         throw new NotFoundException(
           `stock detail not found (stockId: ${stockId}`,
         );

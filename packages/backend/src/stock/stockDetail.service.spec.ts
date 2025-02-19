@@ -6,16 +6,16 @@ import {
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
-import { Logger } from 'winston';
 import { StockDetail } from './domain/stockDetail.entity';
 import { StockDetailService } from './stockDetail.service';
 import { Stock } from '@/stock/domain/stock.entity';
 import { StockDetailResponse } from '@/stock/dto/stockDetail.response';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 describe('StockDetailService 테스트', () => {
   const stockId = '005930';
   let stockDetailService: StockDetailService;
-  let logger: Logger;
+  let customLoggerMock: CustomLogger;
   let dataSourceMock: DataSource;
   let managerMock: EntityManager;
   let repositoryMock: Repository<StockDetail>;
@@ -23,13 +23,13 @@ describe('StockDetailService 테스트', () => {
 
   beforeEach(() => {
     dataSourceMock = mock(DataSource);
-    logger = mock(Logger);
+    customLoggerMock = mock(CustomLogger);
     managerMock = mock(EntityManager);
     repositoryMock = mock(Repository);
     queryBuilderMock = mock(SelectQueryBuilder);
     stockDetailService = new StockDetailService(
       instance(dataSourceMock),
-      instance(logger),
+      instance(customLoggerMock),
     );
     when(dataSourceMock.transaction(anything())).thenCall(async (callback) => {
       return await callback(instance(managerMock));

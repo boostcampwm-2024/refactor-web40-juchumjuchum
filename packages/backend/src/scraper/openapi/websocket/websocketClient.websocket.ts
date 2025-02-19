@@ -1,20 +1,21 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { Logger } from 'winston';
+import { CustomLogger } from '@/common/logger/customLogger';
+import { Injectable } from '@nestjs/common';
 import { RawData, WebSocket } from 'ws';
 @Injectable()
 export class WebsocketClient {
   static url = process.env.WS_URL ?? 'ws://ops.koreainvestment.com:21000';
+  private readonly context = 'WebsocketClient';
   private client: WebSocket;
   private messageQueue: string[] = [];
 
-  constructor(@Inject('winston') private readonly logger: Logger) {
+  constructor(private readonly customLogger: CustomLogger) {
     this.client = new WebSocket(WebsocketClient.url);
     this.initOpen(() => this.flushQueue());
-    this.initError((error) => this.logger.error('WebSocket error', error));
+    this.initError((error) => this.customLogger.error('WebSocket error', error, this.context));
   }
 
-  static websocketFactory(logger: Logger) {
-    return new WebsocketClient(logger);
+  static websocketFactory(customLogger: CustomLogger) {
+    return new WebsocketClient(customLogger);
   }
 
   subscribe(message: string) {
@@ -48,11 +49,12 @@ export class WebsocketClient {
   }
 
   private sendMessage(message: string) {
+    this.customLogger.info(`Trying to send message: ${message}`, this.context);
     if (this.client.readyState === WebSocket.OPEN) {
       this.client.send(message);
-      this.logger.info(`Sent message: ${message}`);
+      this.customLogger.info(`Sent message: ${message}`, this.context);
     } else {
-      this.logger.warn('WebSocket not open. Queueing message.');
+      this.customLogger.warn('WebSocket not open. Queueing message.', this.context);
       this.messageQueue.push(message); // 큐에 메시지를 추가
     }
   }

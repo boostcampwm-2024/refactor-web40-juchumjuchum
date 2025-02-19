@@ -7,15 +7,16 @@ import { Stock } from './domain/stock.entity';
 import { StockLiveData } from './domain/stockLiveData.entity';
 import { StockIndexRateResponse } from './dto/stockIndexRate.response';
 import { StockRateIndexService } from './stockRateIndex.service';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 describe('StockRateIndexService', () => {
   let stockRateIndexService: StockRateIndexService;
   let dataSource: Partial<DataSource>;
-  const logger: Logger = {
-    error: jest.fn(),
-    warn: jest.fn(),
+  const customLoggerMock = {
     info: jest.fn(),
-  } as unknown as Logger;
+    warn: jest.fn(),
+    error: jest.fn(),
+  } as unknown as jest.Mocked<CustomLogger>;
 
   const createDataSourceMock = (managerMock: any): Partial<DataSource> => {
     return {
@@ -39,7 +40,7 @@ describe('StockRateIndexService', () => {
     dataSource = createDataSourceMock(managerMock);
     stockRateIndexService = new StockRateIndexService(
       dataSource as DataSource,
-      logger as Logger,
+      customLoggerMock,
     );
   });
 
@@ -60,7 +61,7 @@ describe('StockRateIndexService', () => {
     dataSource = createDataSourceMock(managerMock);
     stockRateIndexService = new StockRateIndexService(
       dataSource as DataSource,
-      logger as Logger,
+      customLoggerMock,
     );
 
     await expect(stockRateIndexService.getStockRateIndexDate()).rejects.toThrow(

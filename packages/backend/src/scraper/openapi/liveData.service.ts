@@ -1,12 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { Logger } from 'winston';
 import { RawData, WebSocket } from 'ws';
 import { OpenapiLiveData } from './api/openapiLiveData.api';
 import { OpenapiTokenApi } from './api/openapiToken.api';
 import { openApiConfig } from './config/openapi.config';
 import { parseMessage } from './parse/openapi.parser';
 import { WebsocketClient } from './websocket/websocketClient.websocket';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 type TR_IDS = '1' | '2';
 
@@ -17,22 +17,21 @@ export class LiveData {
 
   private readonly reconnectInterval = 60 * 1000;
   private readonly subscribeStocks: Map<string, number> = new Map();
-
   private readonly SOCKET_LIMITS: number = 41;
+  private readonly context = 'LiveData';
 
   private websocketClient: WebsocketClient[] = [];
   private configSubscribeSize: number[] = [];
+
   constructor(
     private readonly openApiToken: OpenapiTokenApi,
     private readonly openapiLiveData: OpenapiLiveData,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {
     this.openApiToken.configs().then((config) => {
       let len = config.length;
       while (len--) {
-        this.websocketClient.push(
-          WebsocketClient.websocketFactory(this.logger),
-        );
+        this.websocketClient.push(WebsocketClient.websocketFactory(this.customLogger));
         this.configSubscribeSize.push(0);
       }
       this.connect();
@@ -59,11 +58,11 @@ export class LiveData {
           stockId,
           '1',
         );
-        this.logger.info(`${idx} : ${message}`);
+        this.customLogger.info(`WebsocketCient subscribe ${idx}: ${message}`, this.context);
         this.websocketClient[idx].subscribe(message);
         return;
       }
-      this.logger.warn(`Websocket register oversize : ${stockId}`);
+      this.customLogger.warn(`Websocket register oversize: ${stockId}`, this.context);
     }
   }
 
@@ -75,7 +74,7 @@ export class LiveData {
       if (idx !== undefined) {
         this.configSubscribeSize[idx]--;
       } else {
-        this.logger.warn(`Websocket error : ${stockId} has invalid idx`);
+        this.customLogger.warn(`Websocket error: ${stockId} has invalid idx`, this.context);
         return;
       }
 
@@ -84,7 +83,7 @@ export class LiveData {
         stockId,
         '2',
       );
-      this.logger.info(`${idx} : ${message}`);
+      this.customLogger.info(`WebsocketCient unsubscribe ${idx}: ${message}`, this.context);
       this.websocketClient[idx].unsubscribe(message);
     }
   }
@@ -107,7 +106,7 @@ export class LiveData {
 
   private initOpenCallback =
     (idx: number) => (sendMessage: (message: string) => void) => async () => {
-      this.logger.info('WebSocket connection established');
+      this.customLogger.info('WebSocket connection established', this.context);
       for (const stockId of this.subscribeStocks.keys()) {
         const message = this.convertObjectToMessage(
           (await this.openApiToken.configs())[idx],
@@ -118,36 +117,36 @@ export class LiveData {
       }
     };
 
-  private initMessageCallback =
-    (client: WebSocket) => async (data: RawData) => {
-      try {
-        const message = this.parseMessage(data);
-        if (message.header) {
-          if (message.header.tr_id === 'PINGPONG') {
-            client.pong(data);
-          } else {
-            this.logger.info(JSON.stringify(message));
-          }
-          return;
+  private initMessageCallback = (client: WebSocket) => async (data: RawData) => {
+    this.customLogger.info(`WebSocket message callback`, this.context);
+    try {
+      const message = this.parseMessage(data);
+      if (message.header) {
+        if (message.header.tr_id === 'PINGPONG') {
+          client.pong(data);
+        } else {
+          this.customLogger.info(JSON.stringify(message), this.context);
         }
-        const liveData = this.openapiLiveData.convertLiveData(message);
-        await this.openapiLiveData.saveLiveData(liveData[0]);
-      } catch (error) {
-        this.logger.warn(error);
+        return;
       }
-    };
+      const liveData = this.openapiLiveData.convertLiveData(message);
+      await this.openapiLiveData.saveLiveData(liveData[0]);
+    } catch (error) {
+      this.customLogger.error(error, this.context);
+    }
+  };
 
   private initCloseCallback = () => {
-    this.logger.warn(
+    this.customLogger.warn(
       `WebSocket connection closed. Reconnecting in ${this.reconnectInterval / 60 / 1000} minute...`,
     );
   };
 
   private initErrorCallback = (error: unknown) => {
     if (error instanceof Error) {
-      this.logger.error(`WebSocket error: ${error.message}`);
+      this.customLogger.error(`WebSocket error: ${error.message}`, this.context);
     } else {
-      this.logger.error('WebSocket error: callback function');
+      this.customLogger.error('WebSocket error: callback function', this.context);
     }
     setTimeout(() => this.connect(), this.reconnectInterval);
   };

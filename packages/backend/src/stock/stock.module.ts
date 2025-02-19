@@ -25,6 +25,7 @@ import { StockDataService } from '@/stock/stockData.service';
 import { StockRepository } from '@/stock/repository/stock.repository';
 import { UserStockRepository } from '@/stock/repository/userStock.repository';
 import { UserStock } from './domain/userStock.entity';
+import { ConnectionMonitorService } from '@/common/logger/connectionMonitor.service';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { UserStock } from './domain/userStock.entity';
     StockRateIndexService,
     StockRepository,
     UserStockRepository,
+    ConnectionMonitorService,
   ],
   exports: [StockService],
 })

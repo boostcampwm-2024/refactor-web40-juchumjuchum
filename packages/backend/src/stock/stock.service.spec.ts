@@ -1,6 +1,5 @@
 import { plainToInstance } from 'class-transformer';
 import { instance, mock, verify, when } from 'ts-mockito';
-import { Logger } from 'winston';
 import { Stock } from './domain/stock.entity';
 import { StockService } from './stock.service';
 import {
@@ -11,10 +10,11 @@ import {
 import { User } from '@/user/domain/user.entity';
 import { StockRepository } from './repository/stock.repository';
 import { UserStockRepository } from './repository/userStock.repository';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 describe('StockService 테스트', () => {
   // mocked classes
-  let mockLogger: Logger;
+  let mockLogger: CustomLogger;
   let mockStockRepository: StockRepository;
   let mockUserStockRepository: UserStockRepository;
 
@@ -24,7 +24,7 @@ describe('StockService 테스트', () => {
   beforeEach(() => {
     mockStockRepository = mock(StockRepository);
     mockUserStockRepository = mock(UserStockRepository);
-    mockLogger = mock(Logger);
+    mockLogger = mock(CustomLogger);
 
     stockService = new StockService(
       instance(mockStockRepository),

@@ -1,6 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { Logger } from 'winston';
 import { openApiConfig } from '../config/openapi.config';
 import { isOpenapiLiveData } from '../type/openapiLiveData.type';
 import { TR_IDS } from '../type/openapiUtil.type';
@@ -9,35 +8,30 @@ import { Json, OpenapiQueue } from '@/scraper/openapi/queue/openapi.queue';
 import { Stock } from '@/stock/domain/stock.entity';
 import { StockLiveData } from '@/stock/domain/stockLiveData.entity';
 import { Cron } from '@nestjs/schedule';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @Injectable()
 export class OpenapiLiveData {
-  private readonly url: string =
-    '/uapi/domestic-stock/v1/quotations/inquire-ccnl';
+  private readonly url: string = '/uapi/domestic-stock/v1/quotations/inquire-ccnl';
+  private readonly context = 'OpenapiLiveData';
+
   constructor(
     private readonly datasource: DataSource,
     private readonly openapiQueue: OpenapiQueue,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {
     this.initializeTopMarketCapStocks(); // 앱 시작시 시총 상위 10개 종목 실시간 데이터 요청
   }
 
   async saveLiveData(data: StockLiveData) {
+    this.customLogger.info(`Save live data to DB, stock: ${data.stock.id}`);
     await this.datasource.manager
       .getRepository(StockLiveData)
       .createQueryBuilder()
       .insert()
       .values(data)
       .orUpdate(
-        [
-          'current_price',
-          'change_rate',
-          'volume',
-          'high',
-          'low',
-          'open',
-          'updatedAt',
-        ],
+        ['current_price', 'change_rate', 'volume', 'high', 'low', 'open', 'updatedAt'],
         ['stock_id'],
       )
       .execute();
@@ -83,14 +77,12 @@ export class OpenapiLiveData {
   @Cron('30 7 * * *') // 매일 오전 7시 30분 (장 시작 전)
   private async initializeTopMarketCapStocks() {
     try {
+      this.customLogger.info('Get top market cap stocks from DB', this.context);
       const result = await this.datasource
         .getRepository(Stock)
         .createQueryBuilder('stock')
         .leftJoin('stock_detail', 'stockDetail', 'stock.id = stockDetail.stock_id')
-        .select([
-          'stock.id AS id',
-          'stockDetail.marketCap AS marketCap',
-        ])
+        .select(['stock.id AS id', 'stockDetail.marketCap AS marketCap'])
         .orderBy('stockDetail.marketCap', 'DESC')
         .limit(10)
         .getRawMany();
@@ -101,24 +93,26 @@ export class OpenapiLiveData {
           try {
             this.insertLiveDataRequest(stock.id);
           } catch (error) {
-            this.logger.error(`Failed to insert live data for stock ${stock.id}:`, error);
+            this.customLogger.error(
+              `Failed to insert LiveData for stock: ${stock.id}`,
+              error,
+              this.context,
+            );
             // 개별 실패는 전체 프로세스를 중단시키지 않음
           }
-        })
+        }),
       );
 
-      this.logger.info('Top 10 market cap stocks initialized for live data', {
-        stocks: result.map(stock => stock.id)
-      });
+      const stocks = result.map((stock) => stock.id);
+      this.customLogger.info('Top 10 market cap stocks initialized', this.context);
+      this.customLogger.info(`Stock list: ${JSON.stringify(stocks)}`, this.context);
     } catch (error) {
-      this.logger.error('Failed to initialize top market cap stocks', {
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      this.customLogger.error('Failed to initialize top market cap stocks', error, this.context);
     }
   }
 
   insertLiveDataRequest(stockId: string) {
-    this.logger.info(`Insert live data request for stockId : ${stockId}`);
+    this.customLogger.info(`Enqueue insertLiveData request for stock: ${stockId}`, this.context);
     const query = this.makeLiveDataQuery(stockId);
     this.openapiQueue.enqueue({
       url: this.url,
@@ -129,18 +123,14 @@ export class OpenapiLiveData {
   }
 
   async connectLiveData(stockId: string, config: typeof openApiConfig) {
+    this.customLogger.info(`Connect live data for stock: ${stockId}`, this.context);
     const query = this.makeLiveDataQuery(stockId);
 
     try {
-      const result = await getOpenApi(
-        this.url,
-        config,
-        query,
-        TR_IDS.LIVE_DATA,
-      );
+      const result = await getOpenApi(this.url, config, query, TR_IDS.LIVE_DATA);
       return result;
     } catch (error) {
-      this.logger.warn(`Connect live data error : ${error}`);
+      this.customLogger.warn(`Connect live data error`, error, this.context);
     }
   }
 
@@ -176,6 +166,10 @@ export class OpenapiLiveData {
   }
 
   private async saveIndividualLiveData(data: StockLiveData) {
+    this.customLogger.info(
+      `Save individual live data to DB, stock: ${data.stock.id}`,
+      this.context,
+    );
     return await this.datasource.manager
       .getRepository(StockLiveData)
       .createQueryBuilder()
@@ -183,15 +177,7 @@ export class OpenapiLiveData {
       .into(StockLiveData)
       .values(data)
       .orUpdate(
-        [
-          'current_price',
-          'change_rate',
-          'volume',
-          'high',
-          'low',
-          'open',
-          'updatedAt',
-        ],
+        ['current_price', 'change_rate', 'volume', 'high', 'low', 'open', 'updatedAt'],
         ['stock_id'],
       )
       .execute();

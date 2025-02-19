@@ -1,18 +1,27 @@
-import { type GetStockTopViewsResponse } from '@/apis/queries/stocks';
 import { cn } from '@/utils/cn';
 
-interface StockInfoCardProps extends GetStockTopViewsResponse {
-  index: number;
-  onClick: () => void;
+interface StockInfoCardProps {
+  index?: number;
+  name?: string;
+  currentPrice?: number;
+  changeRate?: number;
+  news?: {
+    positive_content_summary: string | null;
+    negative_content_summary: string | null;
+  };
+  onClick?: () => void;
 }
 
 export const StockInfoCard = ({
   name,
   currentPrice,
-  changeRate,
-  index,
+  changeRate = 0,
+  index = 0,
+  news,
   onClick,
-}: Partial<StockInfoCardProps>) => {
+}: StockInfoCardProps) => {
+  console.log('StockInfoCard props:', { name, currentPrice, changeRate, index, news });
+
   return (
     <div
       className={cn(
@@ -28,7 +37,7 @@ export const StockInfoCard = ({
           <span
             className={cn(
               'xl:display-bold16 display-bold12',
-              changeRate && changeRate >= 0 ? 'text-red' : 'text-blue',
+              changeRate >= 0 ? 'text-red' : 'text-blue',
             )}
           >
             {changeRate}%
@@ -41,6 +50,34 @@ export const StockInfoCard = ({
           </span>
         </div>
       </section>
+      {news && (
+        <section className="mt-2 text-sm">
+
+          {/* AI Beta 배지 */}
+          <div className="mb-2">
+          <span className="inline-flex items-center rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 px-3 py-1 text-sm font-bold text-green shadow-md">
+            <span className="mr-1 text-lg">⚡</span> AI Beta
+          </span>
+          </div>
+
+
+          {/* 호재가 있는 경우에만 렌더링 */}
+          {news.positive_content_summary && news.positive_content_summary !== '해당사항 없음' && (
+            <div className="text-dark-gray">
+              <span className="font-semibold" style={{ color: '#dc2626' }}>호재:</span>{' '}
+              {news.positive_content_summary}
+            </div>
+          )}
+
+          {/* 악재가 있는 경우에만 렌더링 */}
+          {news.negative_content_summary && news.negative_content_summary !== '해당사항 없음' && (
+            <div className="text-blue-600">
+              <span className="font-semibold" style={{ color: '#2563eb' }}>악재:</span>{' '}
+              {news.negative_content_summary}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 };
