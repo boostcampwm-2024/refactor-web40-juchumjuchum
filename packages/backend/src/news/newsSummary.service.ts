@@ -242,7 +242,7 @@ export class NewsSummaryService {
     return latestNews?.summary;
   }
 
-  async compare(content: string, stockId: string) {
+  async compareSummary(content: string, stockId: string) {
     const latestNewsContent = await this.getLatestNewSummary(stockId);
     const extractor = await this.transformers.pipeline(
       'feature-extraction',
@@ -285,9 +285,10 @@ export class NewsSummaryService {
       throw new Error('Vector haven\'t same length');
     }
 
-    const dotProduct = vector1.reduce((sum, val, idx) => sum + val * vector2[idx], 0);
-    console.log(vector1);
-    console.log(vector2);
+    const dotProduct = vector1.reduce(
+      (sum, val, idx) => sum + val * vector2[idx],
+      0,
+    );
     const size1 = vector1.reduce((sum, val) => sum + val * val, 0.0);
     const size2 = vector2.reduce((sum, val) => sum + val * val, 0.0);
 
