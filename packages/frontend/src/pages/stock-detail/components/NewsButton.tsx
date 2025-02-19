@@ -17,7 +17,6 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
       setIsOpen(true);
       const response = await fetch(`${BASE_URL}/api/stock/news/${stockId}`);
       const data = await response.json();
-      console.log(data);
       setNews(data);
     } catch (error) {
       console.error('뉴스를 불러오는데 실패했습니다:', error);
@@ -66,26 +65,23 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
             <div className="space-y-4">
               {news.map((item, index) => (
                 <>
-                  <div className="font-semibold text-gray-500">
-                    {formatDateToYYYYMMDD(item.createdAt)}
-                  </div>
+                  <div className="font-semibold">{formatDateToYYYYMMDD(item.createdAt)}</div>
                   <div
                     key={index}
                     className="m-1 rounded-lg border p-4 transition-shadow hover:shadow-md"
                   >
                     <div className="text-lg font-bold">{item.title}</div>
-                    <div className="mt-2 text-gray-600">{item.summary}</div>
+                    <div className="mt-2">{item.summary}</div>
                     {item.positiveContent && (
-                      <div className="mt-2 rounded bg-green-50 p-2 text-green-600">
-                        긍정: {item.positiveContent}
+                      <div className="mt-2 rounded p-2">
+                        <span className="text-positive-red">긍정:</span> {item.positiveContent}
                       </div>
                     )}
                     {item.negativeContent && (
-                      <div className="mt-2 rounded bg-red-50 p-2 text-red-600">
-                        부정: {item.negativeContent}
+                      <div className="mt-2 rounded p-2">
+                        <span className="text-negative-blue">부정:</span> {item.negativeContent}
                       </div>
                     )}
-                    {/* TODO: 뉴스 링크를 기사 제목으로 변경 */}
                     <div className="mt-3 space-y-1">
                       {item.link.split(',').map((link: string, i: number) => (
                         <a
@@ -93,9 +89,9 @@ export const NewsButton = ({ stockId, stockName }: NewsButtonProps) => {
                           href={link.trim()}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block text-blue-500 transition-colors hover:text-blue-600 hover:underline"
+                          className="link-primary block hover:underline"
                         >
-                          뉴스 링크 {i + 1}
+                          {item.linkTitles.split('|')[i] || `뉴스 링크 ${i + 1}`}
                         </a>
                       ))}
                     </div>
