@@ -116,7 +116,11 @@ export class NewsSummaryService {
     6. positive_content: 긍정적 영향 상세 내용 (필수)
     7. negative_content: 부정적 영향 상세 내용 (필수)
     8. positive_content_summary: 긍정적 영향 요약, 15자 이내 (필수)
+      * 형식: "핵심내용 으로 인한 주가 상승 방향"
+      * 예시: "자사주 매입으로 인한 주가 상승 예상"
     9. negative_content_summary: 부정적 영향 요약, 15자 이내 (필수)
+      * 형식: "핵심내용 으로 인한 주가 하락 방향"
+      * 예시: "일론 머스크 CEO 사임으로 인한 주가 하락 예상"
     
     [입력 형식]
     {
@@ -140,7 +144,13 @@ export class NewsSummaryService {
       "title": "요약 타이틀",
       "summary": "요약 내용",
       "positive_content": "긍정적 측면",
-      "negative_content": "부정적 측면"
+      "negative_content": "부정적 측면",
+      "positive_content_summary": "긍정적 측면 요약",
+        * 형식: "핵심내용 으로 인한 주가 상승 방향"
+        * 예시: "자사주 매입으로 인한 주가 상승 예상"
+      "negative_content_summary": "부정적 측면 요약"
+        * 형식: "핵심내용 으로 인한 주가 하락 방향"
+        * 예시: "일론 머스크 CEO 사임으로 인한 주가 하락 예상"
     }
     
     [분석 지침]
@@ -157,7 +167,7 @@ export class NewsSummaryService {
        - negative_content_summary: 뉴스가 주가에 미칠 부정적 영향을 15자 이내로 작성
          * 형식: "핵심내용 으로 인한 주가방향"
          * 예시: "자사주 매입으로 인한 주가 상승 예상"
-         * 예시: "일론 머스크 CEO 사임으로 주가 하락 예상"
+         * 예시: "일론 머스크 CEO 사임으로 인한 주가 하락 예상"
     
     3. **영향 분석:**
        - positive_content: 기업, 산업, 경제에 긍정적 영향을 줄 수 있는 요소들을 분석하여 작성
@@ -192,7 +202,7 @@ export class NewsSummaryService {
     - 응답 위에 다른 객체로 감싸지 않아야 합니다
     - 형식이 맞지 않으면 시스템 오류가 발생합니다
     - "해당사항 없음"의 경우에도 명시적으로 작성해야 합니다\`;
-    - summary는 단순 사실이나 예측이 아닌, 명확한 인과관계를 보여야 합니다.\`;
+    - positive_content_summary, negative_content_summary는 단순 사실이나 예측이 아닌, 명확한 인과관계를 보여야 합니다.\`;
       * 금지 예시 : 주가 상승(x)
       * 올바른 예시 : 자사주 매입으로 인한 주가 상승 예상(o)\
     `;
@@ -250,6 +260,8 @@ export class NewsSummaryService {
       summary: 'summary',
       positivecontent: 'positive_content',
       negativecontent: 'negative_content',
+      positivecontentsummary: 'positive_content_summary',
+      negativecontentsummary: 'negative_content_summary'
     };
 
     return Object.keys(content).reduce((acc: any, key: string) => {
