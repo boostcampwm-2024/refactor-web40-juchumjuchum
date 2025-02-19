@@ -11,6 +11,7 @@ import {
   SummaryAPIException,
   TokenAPIException,
 } from './error/newsSummary.error';
+import { dynamicImport } from 'tsimportlib';
 
 @Injectable()
 export class NewsSummaryService {
@@ -20,7 +21,8 @@ export class NewsSummaryService {
     'https://clovastudio.stream.ntruss.com/v1/api-tools/chat-tokenize/HCX-003';
   private readonly CLOVA_API_KEY = process.env.CLOVA_API_KEY;
 
-  constructor(@Inject('winston') private readonly logger: Logger) {}
+  constructor(@Inject('winston') private readonly logger: Logger) {
+  }
 
   async summarizeNews(stockNewsData: CrawlingDataDto) {
     try {
@@ -228,5 +230,12 @@ export class NewsSummaryService {
       acc[fixedKey] = content[key];
       return acc;
     }, {});
+  }
+
+  async getTransformers() {
+    return (await dynamicImport(
+      '@xenova/transformers',
+      module,
+    )) as typeof import('@xenova/transformers');
   }
 }
