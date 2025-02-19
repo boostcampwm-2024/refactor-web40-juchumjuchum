@@ -1,17 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
-import { Logger } from 'winston';
-import { CreateStockNewsDto } from './dto/stockNews.dto';
-import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
+import { dynamicImport } from 'tsimportlib';
+import { Logger } from 'winston';
+import { CreateStockNewsDto } from './dto/stockNews.dto';
 import {
   SummaryFieldException,
   SummaryJsonException,
   SummaryAPIException,
   TokenAPIException,
 } from './error/newsSummary.error';
-import { dynamicImport } from 'tsimportlib';
+import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 
 @Injectable()
 export class NewsSummaryService {
@@ -20,8 +20,10 @@ export class NewsSummaryService {
   private readonly CLOVA_TOKEN_URL =
     'https://clovastudio.stream.ntruss.com/v1/api-tools/chat-tokenize/HCX-003';
   private readonly CLOVA_API_KEY = process.env.CLOVA_API_KEY;
+  private pipeline: never;
 
   constructor(@Inject('winston') private readonly logger: Logger) {
+    this.initializeTransformer().then((r) => console.log(r));
   }
 
   async summarizeNews(stockNewsData: CrawlingDataDto) {
@@ -232,10 +234,24 @@ export class NewsSummaryService {
     }, {});
   }
 
-  async getTransformers() {
-    return (await dynamicImport(
-      '@xenova/transformers',
-      module,
-    )) as typeof import('@xenova/transformers');
+  async compare() {
+    console.log(this.pipeline);
+  }
+
+  private async initializeTransformer() {
+    try {
+      if (!this.pipeline) {
+        const transformers = (await dynamicImport(
+          '@xenova/transformers',
+          module,
+        )) as typeof import('@xenova/transformers');
+        return transformers.pipeline;
+      }
+    } catch (err) {
+      this.logger.error('Failed to initialize transformer:', err);
+      throw err;
+    }
   }
 }
+
+
