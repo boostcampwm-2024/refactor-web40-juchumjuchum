@@ -6,6 +6,7 @@ import { StockNewsRepository } from '@/news/stockNews.repository';
 import { Cron } from '@nestjs/schedule';
 import { formatErrorMessage } from './error/formatErrorMessage';
 import { NewsLinkNotExistException } from '@/news/error/newsLinkNotExist.error';
+import { StockService } from '@/stock/stock.service';
 
 @Injectable()
 export class StockNewsOrchestrationService {
@@ -14,22 +15,23 @@ export class StockNewsOrchestrationService {
     private readonly newsCrawlingService: NewsCrawlingService,
     private readonly newsSummaryService: NewsSummaryService,
     private readonly stockNewsRepository: StockNewsRepository,
-  ) {
-  }
+    private readonly stockService : StockService,
+  ) {}
+
 
   // 주요 종목 정보를 상수로 관리
-  private readonly STOCK_INFO = [
-    { id: '005930', name: '삼성전자' },
-    { id: '000660', name: 'SK하이닉스' },
-    { id: '373220', name: 'LG에너지솔루션' },
-    { id: '207940', name: '삼성바이오로직스' },
-    { id: '005380', name: '현대차' },
-    { id: '000270', name: '기아' },
-    { id: '068270', name: '셀트리온' },
-    { id: '035420', name: 'NAVER' },
-    { id: '105560', name: 'KB금융' },
-    { id: '329180', name: 'HD현대중공업' },
-  ] as const;
+  // private readonly STOCK_INFO = [
+  //   { id: '005930', name: '삼성전자' },
+  //   { id: '000660', name: 'SK하이닉스' },
+  //   { id: '373220', name: 'LG에너지솔루션' },
+  //   { id: '207940', name: '삼성바이오로직스' },
+  //   { id: '005380', name: '현대차' },
+  //   { id: '000270', name: '기아' },
+  //   { id: '068270', name: '셀트리온' },
+  //   { id: '035420', name: 'NAVER' },
+  //   { id: '105560', name: 'KB금융' },
+  //   { id: '329180', name: 'HD현대중공업' },
+  // ] as const;
 
   private readonly MAX_RETRIES = 3;
   private readonly INITIAL_RETRY_DELAY = 60000;  // 60초
@@ -119,12 +121,19 @@ export class StockNewsOrchestrationService {
   public async orchestrateStockProcessing(): Promise<void> {
     const results: { success: boolean; stock: { id: string; name: string } }[] = [];
 
-    for (const stock of this.STOCK_INFO) {
+    const stocksData = await this.stockService.getTopStocksByMarketCap(10);
+    // 필요한 속성만 추출하여 새 배열 생성
+    const STOCK_INFO_TOP10_BY_MARKETCAP = stocksData.map(stock => ({
+      id: stock.id,
+      name: stock.name
+    }));
+    
+    for (const stock of STOCK_INFO_TOP10_BY_MARKETCAP) {
       const result = await this.processStockNews(stock);
       results.push(result);
 
       // 다음 주식 처리 전 대기
-      if (stock !== this.STOCK_INFO[this.STOCK_INFO.length - 1]) {  // 마지막 항목이 아닌 경우에만
+      if (stock !== STOCK_INFO_TOP10_BY_MARKETCAP[STOCK_INFO_TOP10_BY_MARKETCAP.length - 1]) {  // 마지막 항목이 아닌 경우에만
         await new Promise(resolve => setTimeout(resolve, this.PROCESS_DELAY));
       }
     }
