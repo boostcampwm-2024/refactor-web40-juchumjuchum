@@ -5,6 +5,7 @@ import { NewsSummaryService } from '@/news/newsSummary.service';
 import { StockNewsRepository } from '@/news/stockNews.repository';
 import { Cron } from '@nestjs/schedule';
 import { formatErrorMessage } from './error/formatErrorMessage';
+import { NewsLinkNotExistException } from '@/news/error/newsLinkNotExist.error';
 
 @Injectable()
 export class StockNewsOrchestrationService {
@@ -88,6 +89,7 @@ export class StockNewsOrchestrationService {
         return { success: true, stock };
       }
 
+
       await this.stockNewsRepository.create(finalSummarizedData);
       this.logger.info(`Successfully saved news for ${stock.name}`);
       return { success: true, stock };
@@ -96,6 +98,12 @@ export class StockNewsOrchestrationService {
       const errorMessage = formatErrorMessage(error, stock.name);
       this.logger.error(errorMessage);
 
+
+      // 요약할 뉴스가 (링크가) 존재하지 않는 경우 재시도 없이 종료
+      if(error instanceof NewsLinkNotExistException) {
+        return { success: false, stock };
+      }
+      
       if (retryCount < this.MAX_RETRIES) {
         const delay = this.getRetryDelay();
         this.logger.info(`Retrying ${stock.name} in ${delay / 1000}s... (${retryCount + 1}/${this.MAX_RETRIES})`);

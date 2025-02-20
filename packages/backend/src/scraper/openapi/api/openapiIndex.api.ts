@@ -1,7 +1,6 @@
-import { Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
-import { Logger } from 'winston';
 import { Openapi } from '../api/openapi.abstract';
 import { OpenapiTokenApi } from '../api/openapiToken.api';
 import { openApiConfig } from '../config/openapi.config';
@@ -23,28 +22,30 @@ import { OpenapiLiveData } from './openapiLiveData.api';
 import { Json, OpenapiQueue } from '@/scraper/openapi/queue/openapi.queue';
 import { Stock } from '@/stock/domain/stock.entity';
 import { StockLiveData } from '@/stock/domain/stockLiveData.entity';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 /**
  * 국내 업종 현재 지수 - 코스피, 코스닥
  * 해외주식 종목/지수/환율기간별시세 - 환율
  */
+@Injectable()
 export class OpenapiIndex extends Openapi {
   private readonly TR_ID_INDEX: TR_ID = 'FHPUP02100000';
   private readonly TR_ID_RATE: TR_ID = 'FHKST03030100';
-  private readonly INDEX_URL: string =
-    '/uapi/domestic-stock/v1/quotations/inquire-index-price';
-  private readonly RATE_URL: string =
-    '/uapi/overseas-price/v1/quotations/inquire-daily-chartprice';
+  private readonly INDEX_URL: string = '/uapi/domestic-stock/v1/quotations/inquire-index-price';
+  private readonly RATE_URL: string = '/uapi/overseas-price/v1/quotations/inquire-daily-chartprice';
   private KOSPI_ID: IndexRateId = IndexRateStockId.kospi;
   private KOSDAQ_ID: IndexRateId = IndexRateStockId.kosdaq;
   private USD_KRW_RATE: IndexRateId = IndexRateStockId.usd_krw;
+  private readonly context = 'OpenapiIndex';
   private readonly INTERVAL: number;
+
   constructor(
-    @Inject('winston') private readonly logger: Logger,
     protected readonly datasource: DataSource,
     protected readonly config: OpenapiTokenApi,
     private readonly openapiLiveData: OpenapiLiveData,
     private readonly openapiQueue: OpenapiQueue,
+    private readonly customLogger: CustomLogger,
   ) {
     const interval = 1000;
     super(datasource, config, interval);
@@ -56,6 +57,7 @@ export class OpenapiIndex extends Openapi {
   @Cron('0-30 15 * * 1-5')
   async start() {
     // await this.step((await this.config.configs()).length - 1);
+    this.customLogger.info('Start OpenapiIndex', this.context);
     await this.getIndexData();
   }
 
@@ -81,54 +83,46 @@ export class OpenapiIndex extends Openapi {
         this.save(data);
       }
     } else {
-      this.logger.warn('Index data save failed');
+      this.customLogger.warn('Failed to save index data', this.context);
     }
   }
 
   protected async getFromIndex(config: typeof openApiConfig, stockId: string) {
+    this.customLogger.info(`Get index data for stock: ${stockId}`, this.context);
     const query = this.indexQuery(stockId);
 
     try {
-      const result = await getOpenApi(
-        this.INDEX_URL,
-        config,
-        query,
-        this.TR_ID_INDEX,
-      );
+      const result = await getOpenApi(this.INDEX_URL, config, query, this.TR_ID_INDEX);
       if (result && result.output) return result.output;
     } catch (error) {
-      this.logger.warn(
-        `Get index data failed : ${error}, try in ${this.INTERVAL / 1000} sec`,
+      this.customLogger.warn(
+        `Get index data failed, try in ${this.INTERVAL / 1000} sec`,
+        error,
+        this.context,
       );
       setTimeout(() => this.getFromIndex(config, stockId), this.INTERVAL);
     }
   }
 
   protected async getFromRate(config: typeof openApiConfig, stockId: string) {
+    this.customLogger.info(`Get rate data for stock: ${stockId}`, this.context);
     const date = getTodayDate();
-
     const query = this.rateQuery(date, date, stockId);
 
     try {
-      const result = await getOpenApi(
-        this.RATE_URL,
-        config,
-        query,
-        this.TR_ID_RATE,
-      );
+      const result = await getOpenApi(this.RATE_URL, config, query, this.TR_ID_RATE);
       if (result && result.output1) return result.output1;
     } catch (error) {
-      this.logger.warn(
-        `Get rate data failed : ${error}, try in ${this.INTERVAL / 1000} sec`,
+      this.customLogger.warn(
+        `Get rate data failed, try in ${this.INTERVAL / 1000} sec`,
+        error,
+        this.context,
       );
       setTimeout(() => this.getFromRate(config, stockId), this.INTERVAL);
     }
   }
 
-  protected convertResToEntity(
-    res: StockIndex | ExchangeRate,
-    stockId: string,
-  ): StockLiveData {
+  protected convertResToEntity(res: StockIndex | ExchangeRate, stockId: string): StockLiveData {
     if (isStockIndex(res)) {
       return this.convertResToStockIndex(res, stockId);
     } else {
@@ -137,6 +131,7 @@ export class OpenapiIndex extends Openapi {
   }
 
   protected async save(entity: StockLiveData) {
+    this.customLogger.info(`Save index data to live data`, this.context);
     await this.openapiLiveData.saveLiveData(entity);
   }
 
@@ -165,6 +160,7 @@ export class OpenapiIndex extends Openapi {
 
   private async getIndexData() {
     const date = getTodayDate();
+    this.customLogger.info(`Enqueue index data requests`, this.context);
     this.openapiQueue.enqueue({
       url: this.INDEX_URL,
       query: this.indexQuery(this.KOSPI_ID),
@@ -186,6 +182,7 @@ export class OpenapiIndex extends Openapi {
   }
 
   private getIndexDataCallback(stockId: string, isStock: boolean) {
+    this.customLogger.info(`Index data Callback for stock: ${stockId}`, this.context);
     return async (data: Json) => {
       if (isStock && isStockIndex(data.output)) {
         const indexData = this.convertResToEntity(data.output, stockId);
@@ -225,6 +222,7 @@ export class OpenapiIndex extends Openapi {
   }
 
   private async initData() {
+    this.customLogger.info('Initialize index data', this.context);
     await this.saveStock(this.initKosdaqData());
     await this.saveStock(this.initKospiData());
     await this.saveStock(this.initUsdKrwData());
@@ -233,6 +231,7 @@ export class OpenapiIndex extends Openapi {
   private async saveStock(data: Stock) {
     const target = Stock;
 
+    this.customLogger.info(`Save stock data to DB, stock: ${data.id}`, this.context);
     await this.datasource.manager
       .getRepository(target)
       .createQueryBuilder()

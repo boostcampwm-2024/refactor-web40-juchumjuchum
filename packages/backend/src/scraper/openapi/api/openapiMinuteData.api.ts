@@ -1,12 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
-import { Logger } from 'winston';
-import {
-  Json,
-  OpenapiQueue,
-  OpenapiQueueNodeValue,
-} from '../queue/openapi.queue';
+import { Json, OpenapiQueue, OpenapiQueueNodeValue } from '../queue/openapi.queue';
 import {
   isMinuteDataOutput1,
   isMinuteDataOutput2,
@@ -20,22 +15,24 @@ import { getCurrentTime } from '../util/openapiUtil.api';
 import { Alarm } from '@/alarm/domain/alarm.entity';
 import { Stock } from '@/stock/domain/stock.entity';
 import { StockData, StockMinutely } from '@/stock/domain/stockData.entity';
+import { CustomLogger } from '@/common/logger/customLogger';
 
 @Injectable()
 export class OpenapiMinuteData {
   private readonly entity = StockMinutely;
-  private readonly url: string =
-    '/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice';
+  private readonly url: string = '/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice';
+  private readonly context = 'OpenapiMinuteData';
 
   constructor(
     private readonly datasource: DataSource,
     private readonly openapiQueue: OpenapiQueue,
-    @Inject('winston') private readonly logger: Logger,
+    private readonly customLogger: CustomLogger,
   ) {}
 
   @Cron(`* 9-15 * * 1-5`)
   async getStockMinuteData() {
     if (process.env.NODE_ENV !== 'production') return;
+    this.customLogger.info('Get stock minute alarm data from DB', this.context);
     const alarms = await this.datasource.manager
       .getRepository(Alarm)
       .createQueryBuilder('alarm')
@@ -58,21 +55,18 @@ export class OpenapiMinuteData {
 
   getStockMinuteDataCallback(stockId: string, time: string) {
     return async (data: Json) => {
+      this.customLogger.info(`Stock minute data Callback for sotck: ${stockId}`, this.context);
       let output1: MinuteDataOutput1, output2: MinuteDataOutput2[];
       if (data.output1 && isMinuteDataOutput1(data.output1)) {
         output1 = data.output1;
       } else {
-        this.logger.info(`${stockId} has invalid minute data`);
+        this.customLogger.info(`${stockId} has invalid minute data`, this.context);
         return;
       }
-      if (
-        data.output2 &&
-        data.output2[0] &&
-        isMinuteDataOutput2(data.output2[0])
-      ) {
+      if (data.output2 && data.output2[0] && isMinuteDataOutput2(data.output2[0])) {
         output2 = data.output2 as MinuteDataOutput2[];
       } else {
-        this.logger.info(`${stockId} has invalid minute data`);
+        this.customLogger.info(`${stockId} has invalid minute data`, this.context);
         return;
       }
       const minuteDatas: MinuteData[] = output2.map((val): MinuteData => {
@@ -82,28 +76,16 @@ export class OpenapiMinuteData {
     };
   }
 
-  private async saveMinuteData(
-    stockId: string,
-    item: MinuteData[],
-    time: string,
-  ) {
+  private async saveMinuteData(stockId: string, item: MinuteData[], time: string) {
     if (!this.isMarketOpenTime(time)) return;
-    const stockPeriod = item.map((val) =>
-      this.convertResToMinuteData(stockId, val, time),
-    );
+    const stockPeriod = item.map((val) => this.convertResToMinuteData(stockId, val, time));
     if (stockPeriod[0]) {
-      this.datasource.manager.upsert(this.entity, stockPeriod[0], [
-        'stock.id',
-        'startTime',
-      ]);
+      this.customLogger.info(`Upsert stock minute data to DB, stock: ${stockId}`, this.context);
+      this.datasource.manager.upsert(this.entity, stockPeriod[0], ['stock.id', 'startTime']);
     }
   }
 
-  private convertResToMinuteData(
-    stockId: string,
-    item: MinuteData,
-    time: string,
-  ) {
+  private convertResToMinuteData(stockId: string, item: MinuteData, time: string) {
     const stockPeriod = new StockData();
     stockPeriod.stock = { id: stockId } as Stock;
     stockPeriod.startTime = new Date(
