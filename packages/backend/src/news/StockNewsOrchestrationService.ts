@@ -117,7 +117,7 @@ export class StockNewsOrchestrationService {
     }
   }
 
-  @Cron('0 0 0 * * *')
+  @Cron('0 0 23 * * *') // 23시 0분 0초에 실행, 24시에 실행시 날짜가 넘어가므로 기사가 없을 수 있음
   public async orchestrateStockProcessing(): Promise<void> {
     const results: { success: boolean; stock: { id: string; name: string } }[] = [];
 
