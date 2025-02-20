@@ -54,17 +54,27 @@ export const StockDetailHeader = ({
       try {
         const response = await fetch(`${import.meta.env.VITE_BASE_URL}/api/stock/news/${stockId}`);
         const data = await response.json();
+
         if (data.length > 0) {
+          const isValidContent = (content) => {
+            if (!content) return null;
+            const normalized = content.trim().toLowerCase();
+            return normalized === '해당사항 없음' ||
+            normalized === '해당 사항 없음' ||
+            normalized === '해당사항없음' ||
+            normalized === '해당 사항 없음' ? null : content;
+          };
+
           setLatestNews({
-            positive_content_summary: data[0].positiveContentSummary === '해당사항 없음' ? null : data[0].positiveContentSummary,
-            negative_content_summary: data[0].negativeContentSummary === '해당사항 없음' ? null : data[0].negativeContentSummary,
+            positive_content_summary: isValidContent(data[0].positiveContentSummary),
+            negative_content_summary: isValidContent(data[0].negativeContentSummary),
           });
         }
       } catch (error) {
         console.error('Failed to fetch news:', error);
       }
     };
-    
+
     fetchNews();
   }, [stockId]);
 
