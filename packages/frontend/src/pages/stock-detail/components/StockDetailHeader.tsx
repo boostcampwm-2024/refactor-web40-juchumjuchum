@@ -56,7 +56,7 @@ export const StockDetailHeader = ({
         const data = await response.json();
 
         if (data.length > 0) {
-          const isValidContent = (content) => {
+          const isValidContent = (content : any) => {
             if (!content) return null;
             const normalized = content.trim().toLowerCase();
             return normalized === '해당사항 없음' ||
