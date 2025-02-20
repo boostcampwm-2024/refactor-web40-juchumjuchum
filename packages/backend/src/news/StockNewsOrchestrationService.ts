@@ -18,6 +18,7 @@ export class StockNewsOrchestrationService {
     private readonly stockService : StockService,
   ) {}
 
+
   // 주요 종목 정보를 상수로 관리
   // private readonly STOCK_INFO = [
   //   { id: '005930', name: '삼성전자' },
@@ -36,20 +37,20 @@ export class StockNewsOrchestrationService {
   private readonly INITIAL_RETRY_DELAY = 60000;  // 60초
   private readonly PROCESS_DELAY = 3000;  // 주식 처리 사이 대기 시간 (3초)
   private readonly INPUT_TOKEN_LIMIT = 7600;  // 개별 요청당 토큰 수 제한
-  
+
   private getRetryDelay(): number {
     return this.INITIAL_RETRY_DELAY;
   }
 
   private async processStockNews(
-    stock: { id: string; name: string }, 
-    retryCount = 0
+    stock: { id: string; name: string },
+    retryCount = 0,
   ): Promise<{ success: boolean; stock: { id: string; name: string } }> {
     try {
       this.logger.info(`Processing news for ${stock.name} (${stock.id}) - Attempt ${retryCount + 1}`);
-      
+
       const stockDataList = await this.newsCrawlingService.getNewsLinks(stock.name);
-      
+
       if (!stockDataList) {
         this.logger.warn(`No news found for ${stock.name}`);
         return { success: false, stock };
@@ -59,7 +60,7 @@ export class StockNewsOrchestrationService {
         stockDataList.stock,
         stockDataList.response,
       );
-      
+
       // 토큰 수 계산
       let tokenLength =
         await this.newsSummaryService.calculateToken(stockNewsData);
@@ -73,8 +74,6 @@ export class StockNewsOrchestrationService {
       this.logger.info(`final token length: ${tokenLength}`);
 
       const rawSummarizedData = await this.newsSummaryService.summarizeNews(stockNewsData);
-      this.logger.info('rawSummarizedData:');
-      // console.log(rawSummarizedData);
 
       const finalSummarizedData = {
         ...rawSummarizedData,
@@ -82,15 +81,25 @@ export class StockNewsOrchestrationService {
         stock_name: stock.name,
       };
 
-      // console.log(finalSummarizedData);
+      const cosSimilarity = await this.newsSummaryService.compareSummary(
+        finalSummarizedData.summary,
+        stock.id,
+      );
+
+      if (cosSimilarity >= 0.9) {
+        this.logger.info(`today similarity of Summary has over 0.9,  donesn't need save summary`);
+        return { success: true, stock };
+      }
+
 
       await this.stockNewsRepository.create(finalSummarizedData);
       this.logger.info(`Successfully saved news for ${stock.name}`);
       return { success: true, stock };
-      
+
     } catch (error) {
       const errorMessage = formatErrorMessage(error, stock.name);
       this.logger.error(errorMessage);
+
 
       // 요약할 뉴스가 (링크가) 존재하지 않는 경우 재시도 없이 종료
       if(error instanceof NewsLinkNotExistException) {
@@ -99,11 +108,11 @@ export class StockNewsOrchestrationService {
       
       if (retryCount < this.MAX_RETRIES) {
         const delay = this.getRetryDelay();
-        this.logger.info(`Retrying ${stock.name} in ${delay/1000}s... (${retryCount + 1}/${this.MAX_RETRIES})`);
+        this.logger.info(`Retrying ${stock.name} in ${delay / 1000}s... (${retryCount + 1}/${this.MAX_RETRIES})`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.processStockNews(stock, retryCount + 1);
       }
-      
+
       return { success: false, stock };
     }
   }
@@ -122,7 +131,7 @@ export class StockNewsOrchestrationService {
     for (const stock of STOCK_INFO_TOP10_BY_MARKETCAP) {
       const result = await this.processStockNews(stock);
       results.push(result);
-      
+
       // 다음 주식 처리 전 대기
       if (stock !== STOCK_INFO_TOP10_BY_MARKETCAP[STOCK_INFO_TOP10_BY_MARKETCAP.length - 1]) {  // 마지막 항목이 아닌 경우에만
         await new Promise(resolve => setTimeout(resolve, this.PROCESS_DELAY));
@@ -132,7 +141,7 @@ export class StockNewsOrchestrationService {
     const successfulStocks = results
       .filter(r => r.success)
       .map(r => r.stock.name);
-    
+
     const failedStocks = results
       .filter(r => !r.success)
       .map(r => r.stock.name);

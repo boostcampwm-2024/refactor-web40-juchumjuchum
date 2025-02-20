@@ -1,16 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
-import { Logger } from 'winston';
-import { CreateStockNewsDto } from './dto/stockNews.dto';
-import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
+import { dynamicImport } from 'tsimportlib';
+import { Logger } from 'winston';
+import { CreateStockNewsDto } from './dto/stockNews.dto';
 import {
   SummaryFieldException,
   SummaryJsonException,
   SummaryAPIException,
   TokenAPIException,
 } from './error/newsSummary.error';
+import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
+import { StockNewsRepository } from '@/news/stockNews.repository';
 
 @Injectable()
 export class NewsSummaryService {
@@ -19,8 +21,13 @@ export class NewsSummaryService {
   private readonly CLOVA_TOKEN_URL =
     'https://clovastudio.stream.ntruss.com/v1/api-tools/chat-tokenize/HCX-003';
   private readonly CLOVA_API_KEY = process.env.CLOVA_API_KEY;
+  public readonly NEWS_TITLE_SPERATOR = '|';
+  private transformers: any;
 
-  constructor(@Inject('winston') private readonly logger: Logger) {}
+  constructor(@Inject('winston') private readonly logger: Logger,
+              private readonly stockNewsRepository: StockNewsRepository) {
+    this.initializeTransformer().then(() => this.transformers);
+  }
 
   async summarizeNews(stockNewsData: CrawlingDataDto) {
     try {
@@ -35,7 +42,7 @@ export class NewsSummaryService {
         },
       );
 
-      const summarizedNews = this.validateClovaResponse(clovaResponse);
+      const summarizedNews = this.convertClovaResponseToDto(clovaResponse, stockNewsData);
 
       return summarizedNews;
     } catch (error) {
@@ -64,15 +71,12 @@ export class NewsSummaryService {
         throw new TokenAPIException('Invalid clova token response format');
       }
 
-      const totalToken = messages.reduce(
-        (acc: number, message: any): number => {
-          if (typeof message.count !== 'number') {
-            throw new TokenAPIException('Invalid clova token count format');
-          }
-          return acc + message.count;
-        },
-        0,
-      );
+      const totalToken = messages.reduce((acc: number, message: any): number => {
+        if (typeof message.count !== 'number') {
+          throw new TokenAPIException('Invalid clova token count format');
+        }
+        return acc + message.count;
+      }, 0);
 
       this.logger.info(`token length: ${totalToken}`);
 
@@ -228,27 +232,32 @@ export class NewsSummaryService {
     };
   }
 
-  private async validateClovaResponse(response: any) {
+  private async convertClovaResponseToDto(response: any, stockNewsData: CrawlingDataDto) {
     try {
       const content = response.data.result.message.content;
       this.logger.info(`Summarized news: ${content}`);
 
       const parsedContent = JSON.parse(content);
       const fixedContent = this.fixFieldNames(parsedContent);
+      const customizedContent = this.addCustomFields(fixedContent, stockNewsData);
 
-      const summarizedNews = plainToInstance(CreateStockNewsDto, fixedContent);
+      const summarizedNews = plainToInstance(CreateStockNewsDto, customizedContent);
       await validateOrReject(summarizedNews);
 
       return summarizedNews;
     } catch (error) {
       if (Array.isArray(error)) {
-        throw new SummaryFieldException(
-          `${JSON.stringify(error, null, 2)}`,
-          error,
-        );
+        throw new SummaryFieldException(`${JSON.stringify(error, null, 2)}`, error);
       }
       throw new SummaryJsonException('Invalid JSON', error);
     }
+  }
+
+  private addCustomFields(content: any, stockNewsData: CrawlingDataDto) {
+    return {
+      ...content,
+      link_titles: stockNewsData.news.map((n) => n.title).join(this.NEWS_TITLE_SPERATOR),
+    };
   }
 
   private fixFieldNames(content: any) {
@@ -271,4 +280,67 @@ export class NewsSummaryService {
       return acc;
     }, {});
   }
+
+  async getLatestNewSummary(stockId: string) {
+    const latestNews =
+      await this.stockNewsRepository.findLatestByStockId(stockId);
+    return latestNews?.summary;
+  }
+
+  async compareSummary(content: string, stockId: string) {
+    const latestNewsContent = await this.getLatestNewSummary(stockId);
+    const extractor = await this.transformers.pipeline(
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+    );
+
+    const summaryResponse = await extractor([content], {
+      pooling: 'mean',
+      normalize: true,
+    });
+
+    const latestSummaryResponse = await extractor([latestNewsContent], {
+      pooling: 'mean',
+      normalize: true,
+    });
+
+
+    return await this.cos_sim(
+      Array.from(summaryResponse.data),
+      Array.from(latestSummaryResponse.data),
+    );
+  }
+
+  private async initializeTransformer() {
+    try {
+      if (!this.transformers) {
+        this.transformers = (await dynamicImport(
+          '@xenova/transformers',
+          module,
+        )) as typeof import('@xenova/transformers');
+      }
+    } catch (err) {
+      this.logger.error('Failed to initialize transformer:', err);
+      throw err;
+    }
+  }
+
+  async cos_sim(vector1: number[], vector2: number[]) {
+    if (vector1.length !== vector2.length) {
+      throw new Error('Vector haven\'t same length');
+    }
+
+    const dotProduct = vector1.reduce(
+      (sum, val, idx) => sum + val * vector2[idx],
+      0,
+    );
+    const size1 = Math.sqrt(vector1.reduce((sum, val) => sum + val * val, 0.0));
+    const size2 = Math.sqrt(vector2.reduce((sum, val) => sum + val * val, 0.0));
+
+    return size1 && size2 ? dotProduct / (size1 * size2) : 0.0;
+  }
+
+
 }
+
+

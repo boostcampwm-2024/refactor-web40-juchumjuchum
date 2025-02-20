@@ -12,6 +12,9 @@ export class CreateStockNewsDto {
   link: string;
 
   @IsString()
+  link_titles: string;
+
+  @IsString()
   @MaxLength(255)
   title: string;
 
@@ -37,6 +40,7 @@ export class StockNewsResponse {
     this.stockId = stockNews.stockId;
     this.stockName = stockNews.stockName;
     this.link = stockNews.link;
+    this.linkTitles = stockNews.linkTitles;
     this.title = stockNews.title;
     this.summary = stockNews.summary;
     this.positiveContent = stockNews.positiveContent;
@@ -49,6 +53,7 @@ export class StockNewsResponse {
   stockId: string;
   stockName: string;
   link: string;
+  linkTitles: string;
   title: string;
   summary: string;
   positiveContent: string;

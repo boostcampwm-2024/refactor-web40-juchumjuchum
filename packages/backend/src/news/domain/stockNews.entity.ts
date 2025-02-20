@@ -25,6 +25,9 @@ export class StockNews {
   @Column({ type: 'text' })
   link: string;
 
+  @Column({ name: 'link_titles', type: 'text' })
+  linkTitles: string;
+
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
@@ -54,6 +57,6 @@ export class StockNews {
   stock: Stock;
 
   getLinks(): string[] {
-    return this.link.split(',').map(link => link.trim());
+    return this.link.split(',').map((link) => link.trim());
   }
 }
