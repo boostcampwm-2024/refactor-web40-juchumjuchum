@@ -9221,6 +9221,11 @@ tsconfig-paths@^3.15.0:
     minimist "^1.2.6"
     strip-bom "^3.0.0"
 
+tsimportlib@^0.0.5:
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/tsimportlib/-/tsimportlib-0.0.5.tgz#6ba8497a19b7dd5a9198209d9b167c9eb84d7fb1"
+  integrity sha512-qWQv/C3YB4Pwj77Z2HlORfy5EsWHcSYt66VQlMM0xZiKXwtoe1SxfpzmHX62sdJgzU6esrBGtyRIlx6O2OFPrQ==
+
 tslib@2.7.0:
   version "2.7.0"
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.7.0.tgz"

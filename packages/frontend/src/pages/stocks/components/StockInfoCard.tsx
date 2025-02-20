@@ -20,8 +20,6 @@ export const StockInfoCard = ({
   news,
   onClick,
 }: StockInfoCardProps) => {
-  console.log('StockInfoCard props:', { name, currentPrice, changeRate, index, news });
-
   return (
     <div
       className={cn(
@@ -74,7 +72,10 @@ export const StockInfoCard = ({
           </div>
 
           {/* 호재가 있는 경우에만 렌더링 */}
-          {news.positive_content_summary && news.positive_content_summary !== '해당사항 없음' && (
+          {news.positive_content_summary && news.positive_content_summary !== '해당사항 없음'
+            && news.positive_content_summary !== '해당사항없음'
+            && news.positive_content_summary !== '해당 사항없음'
+            && news.positive_content_summary !== '해당 사항 없음' && (
             <div className="text-dark-gray">
               <span className="text-positive-red font-semibold">호재:</span>{' '}
               {news.positive_content_summary}
@@ -82,7 +83,11 @@ export const StockInfoCard = ({
           )}
 
           {/* 악재가 있는 경우에만 렌더링 */}
-          {news.negative_content_summary && news.negative_content_summary !== '해당사항 없음' && (
+          {news.negative_content_summary && news.negative_content_summary !== '해당사항 없음'
+            && news.negative_content_summary !== '해당사항없음'
+            && news.negative_content_summary !== '해당 사항없음'
+            && news.negative_content_summary !== '해당 사항 없음'
+            &&(
             <div className="text-dark-gray">
               <span className="text-negative-blue font-semibold">악재:</span>{' '}
               {news.negative_content_summary}
