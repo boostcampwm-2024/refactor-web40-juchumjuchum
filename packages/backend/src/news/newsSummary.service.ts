@@ -21,6 +21,7 @@ export class NewsSummaryService {
   private readonly CLOVA_TOKEN_URL =
     'https://clovastudio.stream.ntruss.com/v1/api-tools/chat-tokenize/HCX-003';
   private readonly CLOVA_API_KEY = process.env.CLOVA_API_KEY;
+  public readonly NEWS_TITLE_SPERATOR = '|';
   private transformers: any;
 
   constructor(@Inject('winston') private readonly logger: Logger,
@@ -41,7 +42,7 @@ export class NewsSummaryService {
         },
       );
 
-      const summarizedNews = this.validateClovaResponse(clovaResponse);
+      const summarizedNews = this.convertClovaResponseToDto(clovaResponse, stockNewsData);
 
       return summarizedNews;
     } catch (error) {
@@ -70,15 +71,12 @@ export class NewsSummaryService {
         throw new TokenAPIException('Invalid clova token response format');
       }
 
-      const totalToken = messages.reduce(
-        (acc: number, message: any): number => {
-          if (typeof message.count !== 'number') {
-            throw new TokenAPIException('Invalid clova token count format');
-          }
-          return acc + message.count;
-        },
-        0,
-      );
+      const totalToken = messages.reduce((acc: number, message: any): number => {
+        if (typeof message.count !== 'number') {
+          throw new TokenAPIException('Invalid clova token count format');
+        }
+        return acc + message.count;
+      }, 0);
 
       this.logger.info(`token length: ${totalToken}`);
 
@@ -224,27 +222,32 @@ export class NewsSummaryService {
     };
   }
 
-  private async validateClovaResponse(response: any) {
+  private async convertClovaResponseToDto(response: any, stockNewsData: CrawlingDataDto) {
     try {
       const content = response.data.result.message.content;
       this.logger.info(`Summarized news: ${content}`);
 
       const parsedContent = JSON.parse(content);
       const fixedContent = this.fixFieldNames(parsedContent);
+      const customizedContent = this.addCustomFields(fixedContent, stockNewsData);
 
-      const summarizedNews = plainToInstance(CreateStockNewsDto, fixedContent);
+      const summarizedNews = plainToInstance(CreateStockNewsDto, customizedContent);
       await validateOrReject(summarizedNews);
 
       return summarizedNews;
     } catch (error) {
       if (Array.isArray(error)) {
-        throw new SummaryFieldException(
-          `${JSON.stringify(error, null, 2)}`,
-          error,
-        );
+        throw new SummaryFieldException(`${JSON.stringify(error, null, 2)}`, error);
       }
       throw new SummaryJsonException('Invalid JSON', error);
     }
+  }
+
+  private addCustomFields(content: any, stockNewsData: CrawlingDataDto) {
+    return {
+      ...content,
+      link_titles: stockNewsData.news.map((n) => n.title).join(this.NEWS_TITLE_SPERATOR),
+    };
   }
 
   private fixFieldNames(content: any) {
