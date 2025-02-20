@@ -20,8 +20,6 @@ export const StockInfoCard = ({
   news,
   onClick,
 }: StockInfoCardProps) => {
-  console.log('StockInfoCard props:', { name, currentPrice, changeRate, index, news });
-
   return (
     <div
       className={cn(
@@ -52,27 +50,46 @@ export const StockInfoCard = ({
       </section>
       {news && (
         <section className="mt-2 text-sm">
-
           {/* AI Beta 배지 */}
-          <div className="mb-2">
-          <span className="inline-flex items-center rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 px-3 py-1 text-sm font-bold text-green shadow-md">
-            <span className="mr-1 text-lg">⚡</span> AI Beta
-          </span>
+          <div className="mb-1">
+            <span className="badge-ai-beta">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="#fbbf24"
+                viewBox="0 0 24 24"
+                strokeWidth={1.2}
+                stroke="#fbbf24"
+                className="size-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"
+                />
+              </svg>
+              AI Beta
+            </span>
           </div>
 
-
           {/* 호재가 있는 경우에만 렌더링 */}
-          {news.positive_content_summary && news.positive_content_summary !== '해당사항 없음' && (
+          {news.positive_content_summary && news.positive_content_summary !== '해당사항 없음'
+            && news.positive_content_summary !== '해당사항없음'
+            && news.positive_content_summary !== '해당 사항없음'
+            && news.positive_content_summary !== '해당 사항 없음' && (
             <div className="text-dark-gray">
-              <span className="font-semibold" style={{ color: '#dc2626' }}>호재:</span>{' '}
+              <span className="text-positive-red font-semibold">호재:</span>{' '}
               {news.positive_content_summary}
             </div>
           )}
 
           {/* 악재가 있는 경우에만 렌더링 */}
-          {news.negative_content_summary && news.negative_content_summary !== '해당사항 없음' && (
-            <div className="text-blue-600">
-              <span className="font-semibold" style={{ color: '#2563eb' }}>악재:</span>{' '}
+          {news.negative_content_summary && news.negative_content_summary !== '해당사항 없음'
+            && news.negative_content_summary !== '해당사항없음'
+            && news.negative_content_summary !== '해당 사항없음'
+            && news.negative_content_summary !== '해당 사항 없음'
+            &&(
+            <div className="text-dark-gray">
+              <span className="text-negative-blue font-semibold">악재:</span>{' '}
               {news.negative_content_summary}
             </div>
           )}

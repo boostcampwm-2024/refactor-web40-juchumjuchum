@@ -54,17 +54,27 @@ export const StockDetailHeader = ({
       try {
         const response = await fetch(`${import.meta.env.VITE_BASE_URL}/api/stock/news/${stockId}`);
         const data = await response.json();
+
         if (data.length > 0) {
+          const isValidContent = (content : any) => {
+            if (!content) return null;
+            const normalized = content.trim().toLowerCase();
+            return normalized === '해당사항 없음' ||
+            normalized === '해당 사항 없음' ||
+            normalized === '해당사항없음' ||
+            normalized === '해당 사항 없음' ? null : content;
+          };
+
           setLatestNews({
-            positive_content_summary: data[0].positiveContentSummary === '해당사항 없음' ? null : data[0].positiveContentSummary,
-            negative_content_summary: data[0].negativeContentSummary === '해당사항 없음' ? null : data[0].negativeContentSummary,
+            positive_content_summary: isValidContent(data[0].positiveContentSummary),
+            negative_content_summary: isValidContent(data[0].negativeContentSummary),
           });
         }
       } catch (error) {
         console.error('Failed to fetch news:', error);
       }
     };
-    
+
     fetchNews();
   }, [stockId]);
 
@@ -96,7 +106,7 @@ export const StockDetailHeader = ({
     <header className="flex flex-col gap-4">
       <div className="flex items-center gap-4">
         <h1 className="display-bold24">{stockName}</h1>
-        <NewsButton stockId={stockId} stockName={stockName} />
+        {latestNews && <NewsButton stockId={stockId} stockName={stockName} />}
         <Button
           className="flex items-center justify-center gap-1"
           onClick={() => {

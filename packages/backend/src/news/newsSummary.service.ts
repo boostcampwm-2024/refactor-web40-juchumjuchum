@@ -1,16 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import axios from 'axios';
-import { Logger } from 'winston';
-import { CreateStockNewsDto } from './dto/stockNews.dto';
-import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
+import { dynamicImport } from 'tsimportlib';
+import { Logger } from 'winston';
+import { CreateStockNewsDto } from './dto/stockNews.dto';
 import {
   SummaryFieldException,
   SummaryJsonException,
   SummaryAPIException,
   TokenAPIException,
 } from './error/newsSummary.error';
+import { CrawlingDataDto } from '@/news/dto/crawlingData.dto';
+import { StockNewsRepository } from '@/news/stockNews.repository';
 
 @Injectable()
 export class NewsSummaryService {
@@ -19,8 +21,13 @@ export class NewsSummaryService {
   private readonly CLOVA_TOKEN_URL =
     'https://clovastudio.stream.ntruss.com/v1/api-tools/chat-tokenize/HCX-003';
   private readonly CLOVA_API_KEY = process.env.CLOVA_API_KEY;
+  public readonly NEWS_TITLE_SPERATOR = '|';
+  private transformers: any;
 
-  constructor(@Inject('winston') private readonly logger: Logger) {}
+  constructor(@Inject('winston') private readonly logger: Logger,
+              private readonly stockNewsRepository: StockNewsRepository) {
+    this.initializeTransformer().then(() => this.transformers);
+  }
 
   async summarizeNews(stockNewsData: CrawlingDataDto) {
     try {
@@ -35,7 +42,7 @@ export class NewsSummaryService {
         },
       );
 
-      const summarizedNews = this.validateClovaResponse(clovaResponse);
+      const summarizedNews = this.convertClovaResponseToDto(clovaResponse, stockNewsData);
 
       return summarizedNews;
     } catch (error) {
@@ -64,15 +71,12 @@ export class NewsSummaryService {
         throw new TokenAPIException('Invalid clova token response format');
       }
 
-      const totalToken = messages.reduce(
-        (acc: number, message: any): number => {
-          if (typeof message.count !== 'number') {
-            throw new TokenAPIException('Invalid clova token count format');
-          }
-          return acc + message.count;
-        },
-        0,
-      );
+      const totalToken = messages.reduce((acc: number, message: any): number => {
+        if (typeof message.count !== 'number') {
+          throw new TokenAPIException('Invalid clova token count format');
+        }
+        return acc + message.count;
+      }, 0);
 
       this.logger.info(`token length: ${totalToken}`);
 
@@ -116,7 +120,11 @@ export class NewsSummaryService {
     6. positive_content: 긍정적 영향 상세 내용 (필수)
     7. negative_content: 부정적 영향 상세 내용 (필수)
     8. positive_content_summary: 긍정적 영향 요약, 15자 이내 (필수)
+      * 형식: "핵심내용 으로 인한 주가 상승 방향"
+      * 예시: "자사주 매입으로 인한 주가 상승 예상"
     9. negative_content_summary: 부정적 영향 요약, 15자 이내 (필수)
+      * 형식: "핵심내용 으로 인한 주가 하락 방향"
+      * 예시: "일론 머스크 CEO 사임으로 인한 주가 하락 예상"
     
     [입력 형식]
     {
@@ -140,7 +148,13 @@ export class NewsSummaryService {
       "title": "요약 타이틀",
       "summary": "요약 내용",
       "positive_content": "긍정적 측면",
-      "negative_content": "부정적 측면"
+      "negative_content": "부정적 측면",
+      "positive_content_summary": "긍정적 측면 요약",
+        * 형식: "핵심내용 으로 인한 주가 상승 방향"
+        * 예시: "자사주 매입으로 인한 주가 상승 예상"
+      "negative_content_summary": "부정적 측면 요약"
+        * 형식: "핵심내용 으로 인한 주가 하락 방향"
+        * 예시: "일론 머스크 CEO 사임으로 인한 주가 하락 예상"
     }
     
     [분석 지침]
@@ -157,7 +171,7 @@ export class NewsSummaryService {
        - negative_content_summary: 뉴스가 주가에 미칠 부정적 영향을 15자 이내로 작성
          * 형식: "핵심내용 으로 인한 주가방향"
          * 예시: "자사주 매입으로 인한 주가 상승 예상"
-         * 예시: "일론 머스크 CEO 사임으로 주가 하락 예상"
+         * 예시: "일론 머스크 CEO 사임으로 인한 주가 하락 예상"
     
     3. **영향 분석:**
        - positive_content: 기업, 산업, 경제에 긍정적 영향을 줄 수 있는 요소들을 분석하여 작성
@@ -192,7 +206,7 @@ export class NewsSummaryService {
     - 응답 위에 다른 객체로 감싸지 않아야 합니다
     - 형식이 맞지 않으면 시스템 오류가 발생합니다
     - "해당사항 없음"의 경우에도 명시적으로 작성해야 합니다\`;
-    - summary는 단순 사실이나 예측이 아닌, 명확한 인과관계를 보여야 합니다.\`;
+    - positive_content_summary, negative_content_summary는 단순 사실이나 예측이 아닌, 명확한 인과관계를 보여야 합니다.\`;
       * 금지 예시 : 주가 상승(x)
       * 올바른 예시 : 자사주 매입으로 인한 주가 상승 예상(o)\
     `;
@@ -218,27 +232,32 @@ export class NewsSummaryService {
     };
   }
 
-  private async validateClovaResponse(response: any) {
+  private async convertClovaResponseToDto(response: any, stockNewsData: CrawlingDataDto) {
     try {
       const content = response.data.result.message.content;
       this.logger.info(`Summarized news: ${content}`);
 
       const parsedContent = JSON.parse(content);
       const fixedContent = this.fixFieldNames(parsedContent);
+      const customizedContent = this.addCustomFields(fixedContent, stockNewsData);
 
-      const summarizedNews = plainToInstance(CreateStockNewsDto, fixedContent);
+      const summarizedNews = plainToInstance(CreateStockNewsDto, customizedContent);
       await validateOrReject(summarizedNews);
 
       return summarizedNews;
     } catch (error) {
       if (Array.isArray(error)) {
-        throw new SummaryFieldException(
-          `${JSON.stringify(error, null, 2)}`,
-          error,
-        );
+        throw new SummaryFieldException(`${JSON.stringify(error, null, 2)}`, error);
       }
       throw new SummaryJsonException('Invalid JSON', error);
     }
+  }
+
+  private addCustomFields(content: any, stockNewsData: CrawlingDataDto) {
+    return {
+      ...content,
+      link_titles: stockNewsData.news.map((n) => n.title).join(this.NEWS_TITLE_SPERATOR),
+    };
   }
 
   private fixFieldNames(content: any) {
@@ -250,6 +269,8 @@ export class NewsSummaryService {
       summary: 'summary',
       positivecontent: 'positive_content',
       negativecontent: 'negative_content',
+      positivecontentsummary: 'positive_content_summary',
+      negativecontentsummary: 'negative_content_summary'
     };
 
     return Object.keys(content).reduce((acc: any, key: string) => {
@@ -259,4 +280,67 @@ export class NewsSummaryService {
       return acc;
     }, {});
   }
+
+  async getLatestNewSummary(stockId: string) {
+    const latestNews =
+      await this.stockNewsRepository.findLatestByStockId(stockId);
+    return latestNews?.summary;
+  }
+
+  async compareSummary(content: string, stockId: string) {
+    const latestNewsContent = await this.getLatestNewSummary(stockId);
+    const extractor = await this.transformers.pipeline(
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+    );
+
+    const summaryResponse = await extractor([content], {
+      pooling: 'mean',
+      normalize: true,
+    });
+
+    const latestSummaryResponse = await extractor([latestNewsContent], {
+      pooling: 'mean',
+      normalize: true,
+    });
+
+
+    return await this.cos_sim(
+      Array.from(summaryResponse.data),
+      Array.from(latestSummaryResponse.data),
+    );
+  }
+
+  private async initializeTransformer() {
+    try {
+      if (!this.transformers) {
+        this.transformers = (await dynamicImport(
+          '@xenova/transformers',
+          module,
+        )) as typeof import('@xenova/transformers');
+      }
+    } catch (err) {
+      this.logger.error('Failed to initialize transformer:', err);
+      throw err;
+    }
+  }
+
+  async cos_sim(vector1: number[], vector2: number[]) {
+    if (vector1.length !== vector2.length) {
+      throw new Error('Vector haven\'t same length');
+    }
+
+    const dotProduct = vector1.reduce(
+      (sum, val, idx) => sum + val * vector2[idx],
+      0,
+    );
+    const size1 = Math.sqrt(vector1.reduce((sum, val) => sum + val * val, 0.0));
+    const size2 = Math.sqrt(vector2.reduce((sum, val) => sum + val * val, 0.0));
+
+    return size1 && size2 ? dotProduct / (size1 * size2) : 0.0;
+  }
+
+
 }
+
+

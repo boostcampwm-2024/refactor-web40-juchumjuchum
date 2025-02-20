@@ -18,6 +18,7 @@ export class StockNewsRepository {
     stockNews.stockId = dto.stock_id;
     stockNews.stockName = dto.stock_name;
     stockNews.link = dto.link;
+    stockNews.linkTitles = dto.link_titles;
     stockNews.title = dto.title;
     stockNews.summary = dto.summary;
     stockNews.positiveContent = dto.positive_content;
